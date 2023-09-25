@@ -5,6 +5,8 @@
 #include <netdb.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h> 
+
 #define MAX_PENDING 5
 #define MAX_LINE 256
 
@@ -23,7 +25,7 @@ int main(int argc, char *argv[]){
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(atoi(argv[1]));
-;
+
     if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket");
         exit(1);

@@ -23,8 +23,7 @@ int main(int argc, char * argv[]){
     char buf[MAX_LINE];
     int buf_len;
     int s;
-    int len;
-    int addr_len;
+    socklen_t addr_len;
 
     /* translate host name into peer's IP address */
     hp = gethostbyname(host);
@@ -33,13 +32,11 @@ int main(int argc, char * argv[]){
         exit(1);
     }
 
-    /* build address data structure */
-    bzero((char *)&sin, sizeof(sin));
+    bzero(&sin, sizeof(sin));
     sin.sin_family = AF_INET;
-    bcopy(hp->h_addr_list[0], (char *)&sin.sin_addr, hp->h_length);
+    bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
     sin.sin_port = htons(atoi(argv[2]));
 
-    /* active open */
     if ((s = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket");
         exit(1);
@@ -50,11 +47,13 @@ int main(int argc, char * argv[]){
     char filepath[MAX_LINE] = "./";
     if (scanf("%s %s", str1, str2) != 2){
         perror("should have two arguments");
+        close(s);
         exit(1);
     }
 
     if (strcmp(str1, "ftp") != 0){
         perror("first arg should be ftp");
+        close(s);
         exit(1);
     }
 
@@ -63,17 +62,26 @@ int main(int argc, char * argv[]){
 
     if (stat(filepath, &buffer) != 0){
         perror("file does not exist");
+        close(s);
+        exit(1);  
+    }
+
+    sendto(s, "ftp", strlen("ftp"), 0, (struct sockaddr*) &sin, sizeof(sin));
+
+    if ((buf_len = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len)) <= 0){
+        perror("recvfrom");
+        close(s);
         exit(1);  
     }
     
-    sendto(s, "ftp", sizeof("ftp"), 0, (struct sockaddr*) &sin, sizeof(sin));
+    printf("Client responded: %s\n", buf);
 
-    while (buf_len = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len)){
-        if (!strcmp(buf, "yes")){ // buf == "yes"
-            printf("A file transfer can start.");  
-        } else {
-            close(s);
-            exit(0);
-        }
+    if (!strcmp(buf, "yes")){ // buf == "yes"
+        printf("A file transfer can start.\n");  
+    } else {
+        close(s);
+        exit(0);
     }
+
+    close(s);
 }

@@ -1,1 +1,0 @@
-gcc server.c -o server && gcc deliver.c -o deliver

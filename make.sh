@@ -1,0 +1,1 @@
+rm -f a1.tar.gz && tar -czvf a1.tar.gz lab1

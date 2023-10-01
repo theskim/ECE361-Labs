@@ -8,6 +8,7 @@
 #include <unistd.h> 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #define MAX_PENDING 5
 #define MAX_LINE 256
@@ -17,6 +18,7 @@ int main(int argc, char *argv[]){
     char buf[MAX_LINE];
     socklen_t addr_len = sizeof(sin);
     int server_socket;
+    char* str_end;
 
     if (argc != 2){
         perror("Should have two arguments");
@@ -29,11 +31,18 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    bzero(&sin, sizeof(sin));
+    bzero(&sin, sizeof(sin)); // fills a buffer with zero bytes
     sin.sin_family = AF_INET; // IPv4
     sin.sin_addr.s_addr = INADDR_ANY; // update address (0.0.0.0)
-    sin.sin_port = htons(atoi(argv[1])); // update port
-    printf("Bind to Address: %s:%d\n", inet_ntoa(sin.sin_addr), atoi(argv[1]));
+    long port = strtol(argv[1], &str_end, 10);
+    if (errno == ERANGE || str_end == argv[1] || *str_end != '\0'){ // error returned or nothing received
+        perror("invalid port");
+        close(server_socket);
+        exit(1);
+    }
+    sin.sin_port = htons(port); // Convert values between host and network byte order
+
+    printf("Bind to Address: %s:%d\n", inet_ntoa(sin.sin_addr), (int)port);
 
     if ((bind(server_socket, (struct sockaddr*)&sin, sizeof(sin))) < 0) {
         perror("bind");

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h> 
+#include <errno.h>
 
 #define MAX_LINE 256
 
@@ -18,12 +19,13 @@ int main(int argc, char * argv[]){
     int deliver_socket;
     struct stat statbuf; // used to store information about a file or directory
     socklen_t addr_len = sizeof(sin); // ensure that it matches the size of the sin variable
+    char* str_end;
 
     if (argc != 3){
         perror("Should have two arguments");
         exit(1);
     }
-    
+
     hp = gethostbyname(argv[1]);
     if (!hp){
         perror("unknown host");
@@ -33,7 +35,13 @@ int main(int argc, char * argv[]){
     bzero(&sin, sizeof(sin));
     sin.sin_family = AF_INET;
     bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
-    sin.sin_port = htons(atoi(argv[2]));
+    long port = strtol(argv[2], &str_end, 10);
+    if (errno == ERANGE || str_end == argv[2] || *str_end != '\0'){
+        perror("invalid port");
+        close(deliver_socket);
+        exit(1);
+    }
+    sin.sin_port = htons(port); // Convert values between host and network byte order
 
     if ((deliver_socket = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket");

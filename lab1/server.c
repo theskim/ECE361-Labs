@@ -20,13 +20,12 @@ int main(int argc, char *argv[]){
 
     struct sockaddr_in sin;
     char buf[MAX_LINE];
-    int buf_len;
-    socklen_t addr_len;
-    int s;
+    socklen_t addr_len = sizeof(sin);
+    int server_socket;
 
-    if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    if ((server_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket");
-        close(s);
+        close(server_socket);
         exit(1);
     }
 
@@ -36,26 +35,28 @@ int main(int argc, char *argv[]){
     sin.sin_port = htons(atoi(argv[1]));
     printf("Bind to Address: %s:%d\n", inet_ntoa(sin.sin_addr), atoi(argv[1]));
 
-    if ((bind(s, (struct sockaddr*)&sin, sizeof(sin))) < 0) {
+    if ((bind(server_socket, (struct sockaddr*)&sin, sizeof(sin))) < 0) {
         perror("bind");
-        close(s);
+        close(server_socket);
         exit(1);
     }
 
-    if ((buf_len = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr*)&sin, &addr_len)) <= 0){
+    if (recvfrom(server_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
         perror("recvfrom");
-        close(s);
+        close(server_socket);
         exit(1);  
     }
 
+    buf[addr_len] = '\0';
     printf("Client reponded: %s\n", buf);
+
     if (!strcmp(buf, "ftp")){
         // reply with yes
-        sendto(s, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
+        sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
     } else {
         // reply with no
-        sendto(s, "no", strlen("no"), 0, (struct sockaddr*) &sin, sizeof(sin));
+        sendto(server_socket, "no", strlen("no"), 0, (struct sockaddr*) &sin, sizeof(sin));
     }
 
-    close(s);
+    close(server_socket);
 }

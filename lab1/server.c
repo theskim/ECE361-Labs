@@ -57,8 +57,6 @@ int main(int argc, char *argv[]){
     }
 
     buf[addr_len] = '\0'; // safety
-    printf("Client reponded: %s\n", buf);
-
     if (!strcmp(buf, "ftp")){
         // reply with yes
         sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));

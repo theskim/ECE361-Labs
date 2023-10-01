@@ -79,8 +79,6 @@ int main(int argc, char * argv[]){
     }
 
     buf[addr_len] = '\0'; // safety
-    printf("Server responded: %s\n", buf);
-
     if (!strcmp(buf, "yes")){ // buf == "yes"
         printf("A file transfer can start.\n");  
     } else {

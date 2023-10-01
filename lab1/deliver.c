@@ -35,12 +35,13 @@ int main(int argc, char * argv[]){
     bzero(&sin, sizeof(sin));
     sin.sin_family = AF_INET;
     bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
+    
     long port = strtol(argv[2], &str_end, 10);
     if (errno == ERANGE || str_end == argv[2] || *str_end != '\0'){
         perror("invalid port");
-        close(deliver_socket);
         exit(1);
     }
+
     sin.sin_port = htons(port); // Convert values between host and network byte order
 
     if ((deliver_socket = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {

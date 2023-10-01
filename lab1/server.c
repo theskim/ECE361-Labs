@@ -48,7 +48,7 @@ int main(int argc, char *argv[]){
         exit(1);  
     }
 
-    printf("Server reponded: %s\n", buf);
+    printf("Client reponded: %s\n", buf);
     if (!strcmp(buf, "ftp")){
         // reply with yes
         sendto(s, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));

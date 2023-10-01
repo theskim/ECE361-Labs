@@ -74,7 +74,7 @@ int main(int argc, char * argv[]){
         exit(1);  
     }
     
-    printf("Client responded: %s\n", buf);
+    printf("Server responded: %s\n", buf);
 
     if (!strcmp(buf, "yes")){ // buf == "yes"
         printf("A file transfer can start.\n");  

@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
         exit(1);  
     }
 
-    buf[addr_len] = '\0';
+    buf[addr_len] = '\0'; // safety
     printf("Client reponded: %s\n", buf);
 
     if (!strcmp(buf, "ftp")){

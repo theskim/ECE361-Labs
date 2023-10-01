@@ -68,8 +68,8 @@ int main(int argc, char * argv[]){
         close(deliver_socket);
         exit(1);  
     }
-    
-    buf[addr_len] = '\0';
+
+    buf[addr_len] = '\0'; // safety
     printf("Server responded: %s\n", buf);
 
     if (!strcmp(buf, "yes")){ // buf == "yes"

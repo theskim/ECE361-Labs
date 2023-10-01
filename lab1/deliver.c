@@ -11,19 +11,19 @@
 #define MAX_LINE 256
 
 int main(int argc, char * argv[]){
+
+    struct hostent *hp;
+    struct sockaddr_in sin;
+    char buf[MAX_LINE]; // buffer to store result from recvfrom
+    int deliver_socket;
+    struct stat statbuf; // used to store information about a file or directory
+    socklen_t addr_len = sizeof(sin); // ensure that it matches the size of the sin variable
+
     if (argc != 3){
         perror("Should have two arguments");
         exit(1);
     }
-
-    FILE *fp;
-    struct hostent *hp;
-    struct sockaddr_in sin;
-    char buf[MAX_LINE];
-    int deliver_socket;
-    struct stat buffer;
-    socklen_t addr_len = sizeof(sin);
-
+    
     hp = gethostbyname(argv[1]);
     if (!hp){
         perror("unknown host");
@@ -56,7 +56,7 @@ int main(int argc, char * argv[]){
     }
     strcat(filepath, str2);
 
-    if (stat(filepath, &buffer) != 0){
+    if (stat(filepath, &statbuf) != 0){
         perror("file does not exist");
         close(deliver_socket);
         exit(1);  

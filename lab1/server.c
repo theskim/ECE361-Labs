@@ -13,15 +13,15 @@
 #define MAX_LINE 256
 
 int main(int argc, char *argv[]){
-    if (argc != 2){
-        perror("Should have two arguments");
-        exit(1);
-    }
-
     struct sockaddr_in sin;
     char buf[MAX_LINE];
     socklen_t addr_len = sizeof(sin);
     int server_socket;
+
+    if (argc != 2){
+        perror("Should have two arguments");
+        exit(1);
+    }
 
     if ((server_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket");
@@ -30,9 +30,9 @@ int main(int argc, char *argv[]){
     }
 
     bzero(&sin, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
-    sin.sin_port = htons(atoi(argv[1]));
+    sin.sin_family = AF_INET; // IPv4
+    sin.sin_addr.s_addr = INADDR_ANY; // update address (0.0.0.0)
+    sin.sin_port = htons(atoi(argv[1])); // update port
     printf("Bind to Address: %s:%d\n", inet_ntoa(sin.sin_addr), atoi(argv[1]));
 
     if ((bind(server_socket, (struct sockaddr*)&sin, sizeof(sin))) < 0) {

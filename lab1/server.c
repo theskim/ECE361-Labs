@@ -41,9 +41,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }
     sin.sin_port = htons(port); // Convert values between host and network byte order
-
-    printf("Bind to Address: %s:%d\n", inet_ntoa(sin.sin_addr), (int)port);
-
+    
     if ((bind(server_socket, (struct sockaddr*)&sin, sizeof(sin))) < 0) {
         perror("bind");
         close(server_socket);

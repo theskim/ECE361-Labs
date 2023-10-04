@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h> 
 #include <errno.h>
+#include <time.h>
 
 #define MAX_LINE 256
 
@@ -71,12 +72,16 @@ int main(int argc, char * argv[]){
         exit(1);  
     }
 
+    clock_t start = clock(); // start measuring time
     sendto(deliver_socket, "ftp", strlen("ftp"), 0, (struct sockaddr*) &sin, sizeof(sin));
     if (recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
         perror("recvfrom");
         close(deliver_socket);
         exit(1);  
     }
+    clock_t end = clock(); // end measuring time
+    float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+    printf("Round-trip time from the client to the server: %f seconds\n", seconds);
 
     buf[addr_len] = '\0'; // safety
     if (!strcmp(buf, "yes")){ // buf == "yes"

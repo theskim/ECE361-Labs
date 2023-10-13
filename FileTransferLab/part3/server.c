@@ -14,11 +14,22 @@
 #define MAX_LINE 256
 
 int main(int argc, char *argv[]){
+
+    typedef struct packet 
+    {
+        unsigned int total_frag; 
+        unsigned int frag_no; 
+        unsigned int size;
+        char* filename;
+        char filedata[1000];
+    };
+
     struct sockaddr_in sin;
     char buf[MAX_LINE];
     socklen_t addr_len = sizeof(sin);
     int server_socket;
     char* str_end;
+    FILE *fp;
 
     if (argc != 2){
         perror("Should have two arguments");
@@ -63,5 +74,33 @@ int main(int argc, char *argv[]){
         sendto(server_socket, "no", strlen("no"), 0, (struct sockaddr*) &sin, sizeof(sin));
     }
 
+    if (recvfrom(server_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
+        perror("recvfrom");
+        close(server_socket);
+        exit(1);  
+    }
+
+
+    char * num_packets = strtok(buf, ":");
+    printf("num_packets: %s\n",num_packets);
+
+    char * packet_num = strtok(NULL, ":");
+    printf("packet_num: %s\n",packet_num);
+    
+    char * size = strtok(NULL, ":");
+    printf("size: %s\n",size);
+
+    char * filename = strtok(NULL, ":");
+    printf("filename: %s\n",filename);
+
+    char * payload = strtok(NULL, ":");
+    printf("payload: %s\n",payload);
+
+    /*
+    fp = fopen(SOME_FILE);
+    fputs(SOME_TEXT);
+    fclose(fp);
+    */
+    
     close(server_socket);
 }

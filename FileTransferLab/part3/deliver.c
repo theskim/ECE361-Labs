@@ -9,10 +9,32 @@
 #include <unistd.h> 
 #include <errno.h>
 #include <time.h>
+#include <math.h>
 
-#define MAX_LINE 256
+
+#define MAX_LINE 1000
 
 int main(int argc, char * argv[]){
+
+    typedef struct packet 
+    {
+        unsigned int total_frag; 
+        unsigned int frag_no; 
+        unsigned int size;
+        char* filename;
+        char filedata[MAX_LINE];
+    };
+
+    char *my_itoa(int num, char *str)
+    {
+        if(str == NULL)
+        {
+                return NULL;
+        }
+        sprintf(str, "%d", num);
+        return str;
+    }
+
 
     struct hostent *hp;
     struct sockaddr_in sin;
@@ -21,6 +43,17 @@ int main(int argc, char * argv[]){
     struct stat statbuf; // used to store information about a file or directory
     socklen_t addr_len = sizeof(sin); // ensure that it matches the size of the sin variable
     char* str_end;
+    FILE *fp; //pointer to file
+    //char ch;
+    struct packet **packets; //array of struct packet
+    packets = calloc(100,sizeof(struct packet*)); //alocate 100 pointers to packet structs
+    
+    char payload[3*MAX_LINE];
+    char tmp[MAX_LINE];
+    
+    int filesize;
+    int num_packets;
+    int num_bytes;
 
     if (argc != 3){
         perror("Should have two arguments");
@@ -72,16 +105,26 @@ int main(int argc, char * argv[]){
         exit(1);  
     }
 
-    clock_t start = clock(); // start measuring time
+
+    // Opening file in reading mode
+    fp = fopen(filepath, "rb"); //rb = read binary
+ 
+    if (NULL == fp) {
+        printf("file can't be opened \n");
+    }
+
+    fseek(fp, 0L, SEEK_END);
+    filesize = ftell(fp);
+    rewind(fp);
+
+    printf("File successfully opened. File size: %d\n",filesize);
+
     sendto(deliver_socket, "ftp", strlen("ftp"), 0, (struct sockaddr*) &sin, sizeof(sin));
     if (recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
         perror("recvfrom");
         close(deliver_socket);
         exit(1);  
     }
-    clock_t end = clock(); // end measuring time
-    float seconds = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Round-trip time from the client to the server: %f seconds\n", seconds);
 
     buf[addr_len] = '\0'; // safety
     if (!strcmp(buf, "yes")){ // buf == "yes"
@@ -91,5 +134,45 @@ int main(int argc, char * argv[]){
         exit(0);
     }
 
+    num_packets = ceil((float)filesize/1000.0);
+
+    for(int j=0; j<num_packets; j++)
+    {
+        if(filesize>MAX_LINE)
+            num_bytes = MAX_LINE;        
+        else
+            num_bytes = filesize;
+        
+        packets[j] = calloc(1, sizeof(struct packet));
+        packets[j]->size = num_bytes;
+        packets[j]->filename = filepath+2;
+        packets[j]->frag_no = j;
+        packets[j]->total_frag = num_packets;
+        fread(packets[j]->filedata,1,num_bytes,fp); //read num_bytes elements of size 1 byte into packet
+
+        my_itoa(num_packets,payload);
+        strcat(payload,":");
+        my_itoa(packets[j]->frag_no,tmp);
+        strcat(payload,tmp);
+        strcat(payload,":");
+        my_itoa(packets[j]->size,tmp);
+        strcat(payload,tmp);
+        strcat(payload,":");
+        strcat(payload,filepath+2);
+        strcat(payload,":");
+        
+        memcpy(payload+strlen(payload),packets[j]->filedata,sizeof(packets[j]->filedata)+1); 
+        printf("Sending packet %d\n",j);
+        sendto(deliver_socket, payload, sizeof(payload), 0, (struct sockaddr*) &sin, sizeof(sin));
+        filesize = filesize - 1000;
+        printf("Packet %d sent\n",j);
+    }
+
+
+    for(int j=0; j<num_packets; j++)
+    {
+        free(packets[j]);
+    }
+    free(packets);
     close(deliver_socket);
 }

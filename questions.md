@@ -6,3 +6,5 @@ As UDP sends data in the form of datagrams (bytes), we should receive data in ch
 Lab 2
 Question: How long is the measured round-trip time?
 Around 0.0001 to 0.0003 seconds (0.1 - 0.3 ms)
+
+Use hostname -I

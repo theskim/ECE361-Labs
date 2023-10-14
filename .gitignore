@@ -1,3 +1,5 @@
-*/deliver
-*/server
+*server
+*deliver
 *.tar.gz
+*.dSYM
+*.txt

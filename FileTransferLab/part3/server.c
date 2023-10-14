@@ -72,4 +72,55 @@ int main(int argc, char *argv[]){
         char* filename;
         char* payload;
         
-       
+        do {
+            if (recvfrom(server_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
+                perror("recvfrom");
+                close(server_socket);
+                exit(1);  
+            }
+            
+            printf("buf: %s\n", buf);
+
+            char* num_packets = strtok(buf, ":");
+            printf("num_packets: %s\n", num_packets);
+            num_packets_ = atoi(num_packets);
+            
+            char* packet_num = strtok(NULL, ":");
+            printf("packet_num: %s\n", packet_num);
+            packet_num_ = atoi(packet_num);
+
+            char* size_ = strtok(NULL, ":");
+            printf("size: %s\n", size_);
+            size = atoi(size_);
+
+            filename = strtok(NULL, ":");
+            printf("filename: %s\n", filename);
+
+            payload = strtok(NULL, ":");
+
+            if ((int)strlen(payload) != size)
+                sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
+            else
+                sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
+
+        } while ((int)strlen(payload) != size);
+
+        if (packet_num_ == 0)
+            fp = fopen(filename, "w");
+        else
+            fp = fopen(filename, "a");
+
+        if (fp == NULL){
+            perror("filename");
+            close(server_socket);
+            exit(1);
+        }
+
+        for (int i = 0; i < size && size <= MAX_LINE; ++i)
+            fprintf(fp, "%c", payload[i]);
+
+        fclose(fp);
+    } while (packet_num_ < num_packets_ - 1);
+
+    close(server_socket);
+}

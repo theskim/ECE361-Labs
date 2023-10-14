@@ -9,23 +9,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include "packet.h"
 
 #define MAX_PENDING 5
-#define MAX_LINE 256
 
 int main(int argc, char *argv[]){
-
-    typedef struct packet 
-    {
-        unsigned int total_frag; 
-        unsigned int frag_no; 
-        unsigned int size;
-        char* filename;
-        char filedata[1000];
-    };
-
     struct sockaddr_in sin;
-    char buf[MAX_LINE];
+    char buf[MAX_LINE * 3];
     socklen_t addr_len = sizeof(sin);
     int server_socket;
     char* str_end;
@@ -65,7 +55,7 @@ int main(int argc, char *argv[]){
         exit(1);  
     }
 
-    buf[addr_len] = '\0'; // safety
+    buf[strlen("ftp")] = '\0'; // safety
     if (!strcmp(buf, "ftp")){
         // reply with yes
         sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
@@ -74,33 +64,12 @@ int main(int argc, char *argv[]){
         sendto(server_socket, "no", strlen("no"), 0, (struct sockaddr*) &sin, sizeof(sin));
     }
 
-    if (recvfrom(server_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
-        perror("recvfrom");
-        close(server_socket);
-        exit(1);  
-    }
+    int num_packets_ = 0;
+    int packet_num_ = 0;
 
-
-    char * num_packets = strtok(buf, ":");
-    printf("num_packets: %s\n",num_packets);
-
-    char * packet_num = strtok(NULL, ":");
-    printf("packet_num: %s\n",packet_num);
-    
-    char * size = strtok(NULL, ":");
-    printf("size: %s\n",size);
-
-    char * filename = strtok(NULL, ":");
-    printf("filename: %s\n",filename);
-
-    char * payload = strtok(NULL, ":");
-    printf("payload: %s\n",payload);
-
-    /*
-    fp = fopen(SOME_FILE);
-    fputs(SOME_TEXT);
-    fclose(fp);
-    */
-    
-    close(server_socket);
-}
+    do {
+        int size = 0;
+        char* filename;
+        char* payload;
+        
+       

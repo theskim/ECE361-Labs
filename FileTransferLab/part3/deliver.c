@@ -91,7 +91,7 @@ int main(int argc, char * argv[]){
     }
 
     // Opening file in reading mode
-    fp = fopen(filepath, "rb"); //rb = read binary
+    fp = fopen(filepath, "rb"); // rb = read binary
  
     if (NULL == fp) {
         printf("file can't be opened \n");
@@ -110,7 +110,7 @@ int main(int argc, char * argv[]){
         exit(1);  
     }
 
-    buf[addr_len] = '\0'; // safety
+    buf[strlen("yes")] = '\0'; // safety
     if (!strcmp(buf, "yes")){ // buf == "yes"
         printf("A file transfer can start.\n");  
     } else {

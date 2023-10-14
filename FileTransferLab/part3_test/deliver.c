@@ -131,7 +131,7 @@ int main(int argc, char * argv[]){
         packets[j]->filename = filepath + 2;
         packets[j]->frag_no = j;
         packets[j]->total_frag = num_packets;
-        fread(packets[j]->filedata, 1, num_bytes, fp); //read num_bytes elements of size 1 byte into packet
+        fread(packets[j]->filedata, 1, num_bytes, fp); // read num_bytes elements of size 1 byte into packet
 
         my_itoa(num_packets,payload);
         strcat(payload, ":");
@@ -148,7 +148,7 @@ int main(int argc, char * argv[]){
         memcpy(payload + strlen(payload), packets[j]->filedata, sizeof(packets[j]->filedata));
 
         do {
-            printf("Sending packet %d (sized %d)\n", j, num_bytes);
+            printf("Sending packet %d (payload sized %d)\n", j, num_bytes);
             sendto(deliver_socket, payload, sizeof(payload), 0, (struct sockaddr*) &sin, sizeof(sin));
 
             buf[addr_len] = '\0'; // safety

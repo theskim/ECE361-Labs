@@ -78,7 +78,7 @@ int main(int argc, char *argv[]){
                 close(server_socket);
                 exit(1);  
             }
-            printf("fah: %s\n", buf);
+
             char* num_packets = strtok(buf, ":");
             printf("num_packets: %s\n", num_packets);
             num_packets_ = atoi(num_packets);
@@ -94,18 +94,20 @@ int main(int argc, char *argv[]){
             filename = strtok(NULL, ":");
             printf("filename: %s\n", filename);
 
-            payload = strtok(NULL, ":");
+            payload = strtok(NULL, "\0");
 
             if ((int)strlen(payload) != size)
                 sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
             else
                 sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
+
+            printf("%d\n", (int)strlen(payload));
         } while ((int)strlen(payload) != size);
 
         if (packet_num_ == 0)
-            fp = fopen("test3.jpeg", "w");
+            fp = fopen(filename, "wb");
         else
-            fp = fopen("test3.jpeg", "a");
+            fp = fopen(filename, "ab");
 
         if (fp == NULL){
             perror("filename");

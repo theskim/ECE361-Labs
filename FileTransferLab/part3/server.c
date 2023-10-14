@@ -78,9 +78,7 @@ int main(int argc, char *argv[]){
                 close(server_socket);
                 exit(1);  
             }
-            
-            printf("buf: %s\n", buf);
-
+            printf("fah: %s\n", buf);
             char* num_packets = strtok(buf, ":");
             printf("num_packets: %s\n", num_packets);
             num_packets_ = atoi(num_packets);
@@ -102,22 +100,22 @@ int main(int argc, char *argv[]){
                 sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
             else
                 sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
-
         } while ((int)strlen(payload) != size);
 
         if (packet_num_ == 0)
-            fp = fopen(filename, "w");
+            fp = fopen("test3.jpeg", "w");
         else
-            fp = fopen(filename, "a");
+            fp = fopen("test3.jpeg", "a");
 
         if (fp == NULL){
             perror("filename");
             close(server_socket);
             exit(1);
         }
-
-        for (int i = 0; i < size && size <= MAX_LINE; ++i)
-            fprintf(fp, "%c", payload[i]);
+        
+        fwrite(payload, sizeof(unsigned char), size, fp);
+        // for (int i = 0; i < size && size <= MAX_LINE; ++i)
+        //     fprintf(fp, "%c", payload[i]);
 
         fclose(fp);
     } while (packet_num_ < num_packets_ - 1);

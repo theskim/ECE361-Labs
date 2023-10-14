@@ -145,7 +145,7 @@ int main(int argc, char * argv[]){
         strcat(payload, ":");
 
         printf("%s\n", packets[j]->filedata);
-        strcat(payload, packets[j]->filedata); 
+        memcpy(payload + strlen(payload), packets[j]->filedata, sizeof(packets[j]->filedata));
 
         do {
             printf("Sending packet %d (sized %d)\n", j, num_bytes);
@@ -158,7 +158,6 @@ int main(int argc, char * argv[]){
                 close(deliver_socket);
                 exit(1);  
             }
-            printf("buf: %s\n", buf);
         } while (strcmp(buf, "yes")); // buf != "yes"
 
         printf("Packet %d sent\n", j);

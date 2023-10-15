@@ -82,6 +82,7 @@ int main(int argc, char * argv[]){
         close(deliver_socket);
         exit(1);
     }
+
     strcat(filepath, str2);
 
     if (stat(filepath, &statbuf) != 0){
@@ -93,8 +94,10 @@ int main(int argc, char * argv[]){
     // Opening file in reading mode
     fp = fopen(filepath, "rb"); // rb = read binary
  
-    if (NULL == fp) {
-        printf("file can't be opened \n");
+    if (fp == NULL){
+        perror("file cannot be opened");
+        close(deliver_socket);
+        exit(1);  
     }
 
     fseek(fp, 0L, SEEK_END);
@@ -146,17 +149,18 @@ int main(int argc, char * argv[]){
 
         memcpy(payload + strlen(payload), packets[j]->filedata, sizeof(packets[j]->filedata));
 
-        do {
+        do { // for validating whether the packet is sent properly
             printf("Sending packet %d (payload sized %d)\n", j, num_bytes);
             sendto(deliver_socket, payload, sizeof(payload), 0, (struct sockaddr*) &sin, sizeof(sin));
 
-            buf[addr_len] = '\0'; // safety
+            *(buf + addr_len) = '\0'; // safety
 
             if (recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
                 perror("recvfrom");
                 close(deliver_socket);
                 exit(1);  
             }
+
         } while (strcmp(buf, "yes")); // buf != "yes"
 
         printf("Packet %d sent\n", j);

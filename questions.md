@@ -7,4 +7,5 @@ Lab 2
 Question: How long is the measured round-trip time?
 Around 0.0001 to 0.0003 seconds (0.1 - 0.3 ms)
 
-Use hostname -I
+Lab 3
+To check the address: hostname -I

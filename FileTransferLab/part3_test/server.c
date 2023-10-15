@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <assert.h>
 #include "packet.h"
 
 #define MAX_PENDING 5
@@ -36,6 +37,7 @@ int main(int argc, char *argv[]){
     sin.sin_family = AF_INET; // IPv4
     sin.sin_addr.s_addr = INADDR_ANY; // update address (0.0.0.0)
     long port = strtol(argv[1], &str_end, 10);
+
     if (errno == ERANGE || str_end == argv[1] || *str_end != '\0'){ // error returned or nothing received
         perror("invalid port");
         close(server_socket);
@@ -64,14 +66,14 @@ int main(int argc, char *argv[]){
         sendto(server_socket, "no", strlen("no"), 0, (struct sockaddr*) &sin, sizeof(sin));
     }
 
-    int num_packets_ = 0;
-    int packet_num_ = 0;
+    int num_packets = 0;
+    int packet_num = 0;
+    int size = 0;
+    int curr_index = 0;
+    char filename[MAX_LINE]; 
+    char payload[MAX_LINE];   
 
-    do {
-        int size = 0;
-        char* filename;
-        char* payload;
-        
+    do {      
         do {
             if (recvfrom(server_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
                 perror("recvfrom");
@@ -79,35 +81,89 @@ int main(int argc, char *argv[]){
                 exit(1);  
             }
 
-            char* num_packets = strtok(buf, ":");
-            printf("num_packets: %s\n", num_packets);
-            num_packets_ = atoi(num_packets);
-            
-            char* packet_num = strtok(NULL, ":");
-            printf("packet_num: %s\n", packet_num);
-            packet_num_ = atoi(packet_num);
+            char num_packets_[MAX_LINE];
+            char packet_num_[MAX_LINE];
+            char size_[MAX_LINE];
+            char* curr_buf = buf;
 
-            char* size_ = strtok(NULL, ":");
-            printf("size: %s\n", size_);
-            size = atoi(size_);
+            curr_index = 0;
+            while (*curr_buf != ':' && *curr_buf != '\0'){
+                num_packets_[curr_index] = *curr_buf;
+                ++curr_index;
+                ++curr_buf;
+            }
 
-            filename = strtok(NULL, ":");
-            printf("filename: %s\n", filename);
-
-            payload = strtok(NULL, "\0");
-
-            if ((int)strlen(payload) != size)
+            if (*curr_buf != ':'){
                 sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
-            else
-                sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
+                continue;
+            }
 
-            printf("%d\n", (int)strlen(payload));
-        } while ((int)strlen(payload) != size);
+            num_packets_[curr_index] = '\0';
+            num_packets = atoi(num_packets_);
+            printf("num_packets: %d\n", num_packets);
+            curr_buf = (*curr_buf == ':') ? curr_buf + 1 : curr_buf;
+            
+            curr_index = 0;
+            while (*curr_buf != ':' && *curr_buf != '\0'){
+                packet_num_[curr_index] = *curr_buf;
+                ++curr_index;
+                ++curr_buf;
+            }
+            if (*curr_buf != ':'){
+                sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
+                continue;
+            }
 
-        if (packet_num_ == 0)
-            fp = fopen(filename, "wb");
-        else
-            fp = fopen(filename, "ab");
+            packet_num_[curr_index] = '\0';
+            packet_num = atoi(packet_num_);
+            printf("packet_num: %d\n", packet_num);
+            curr_buf = (*curr_buf == ':') ? curr_buf + 1 : curr_buf;
+
+            curr_index = 0;
+            while (*curr_buf != ':' && *curr_buf != '\0'){
+                size_[curr_index] = *curr_buf;
+                ++curr_index;
+                ++curr_buf;
+            }
+            if (*curr_buf != ':'){
+                sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
+                continue;
+            }
+
+            size_[curr_index] = '\0';
+            size = atoi(size_);
+            printf("size: %d\n", size);
+            curr_buf = (*curr_buf == ':') ? curr_buf + 1 : curr_buf;
+
+            curr_index = 0;
+            while (*curr_buf != ':' && *curr_buf != '\0'){
+                filename[curr_index] = *curr_buf;
+                ++curr_index;
+                ++curr_buf;
+            }
+            if (*curr_buf != ':'){
+                sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
+                continue;
+            }
+            
+            filename[curr_index] = '\0';
+            printf("filename: %s\n", filename);
+            curr_buf = (*curr_buf == ':') ? curr_buf + 1 : curr_buf;
+            
+            curr_index = 0;
+            while (curr_index < size){
+                payload[curr_index] = *curr_buf;
+                ++curr_index;
+                ++curr_buf;
+            }
+            payload[curr_index] = '\0';
+            assert(curr_index == size);
+            printf("payload: %s\n", payload);
+
+            sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
+        } while (curr_index != size);
+
+        fp = (packet_num == 0) ? fopen(filename, "wb") : fopen(filename, "ab");
 
         if (fp == NULL){
             perror("filename");
@@ -116,11 +172,8 @@ int main(int argc, char *argv[]){
         }
         
         fwrite(payload, sizeof(unsigned char), size, fp);
-        // for (int i = 0; i < size && size <= MAX_LINE; ++i)
-        //     fprintf(fp, "%c", payload[i]);
-
         fclose(fp);
-    } while (packet_num_ < num_packets_ - 1);
+    } while (packet_num < num_packets - 1);
 
     close(server_socket);
 }

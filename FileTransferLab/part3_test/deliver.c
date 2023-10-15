@@ -121,10 +121,7 @@ int main(int argc, char * argv[]){
     num_packets = ceil((float) filesize / 1000.0);
 
     for (int j = 0; j < num_packets; j++){
-        if (filesize > MAX_LINE)
-            num_bytes = MAX_LINE;        
-        else
-            num_bytes = filesize;
+        num_bytes = (filesize > MAX_LINE) ? MAX_LINE : filesize;        
         
         packets[j] = calloc(1, sizeof(Packet));
         packets[j]->size = num_bytes;
@@ -133,18 +130,20 @@ int main(int argc, char * argv[]){
         packets[j]->total_frag = num_packets;
         fread(packets[j]->filedata, 1, num_bytes, fp); // read num_bytes elements of size 1 byte into packet
 
-        my_itoa(num_packets,payload);
-        strcat(payload, ":");
+        my_itoa(num_packets, payload);
+        memcpy(payload + strlen(payload), ":", sizeof(":"));
         my_itoa(packets[j]->frag_no, tmp);
-        strcat(payload, tmp);
-        strcat(payload, ":");
+        memcpy(payload + strlen(payload), tmp, sizeof(tmp));
+        memcpy(payload + strlen(payload), ":", sizeof(":"));
+        
         my_itoa(packets[j]->size, tmp);
-        strcat(payload, tmp);
-        strcat(payload, ":");
-        strcat(payload, filepath + 2);
-        strcat(payload, ":");
+        memcpy(payload + strlen(payload), tmp, sizeof(tmp));
+        memcpy(payload + strlen(payload), ":", sizeof(":"));
 
-        printf("%s\n", packets[j]->filedata);
+        char* new_filepath = filepath + 2;
+        memcpy(payload + strlen(payload), new_filepath, strlen(new_filepath) + 1);
+        memcpy(payload + strlen(payload), ":", sizeof(":"));
+
         memcpy(payload + strlen(payload), packets[j]->filedata, sizeof(packets[j]->filedata));
 
         do {

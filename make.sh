@@ -1,0 +1,1 @@
+rm -f a1.tar.gz && tar -czvf names_a1.tar.gz FileTransferLab

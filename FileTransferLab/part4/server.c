@@ -68,7 +68,12 @@ int main(int argc, char *argv[]){
     int num_packets = 0;
     int packet_num = 0;
     int size = 0;
+    int prev_size = 0;
     int curr_index = 0;
+    int prev_packet_num = 0;
+    char payload[MAX_LINE * 2];   
+    char prev_payload[MAX_LINE * 2];   
+    char filename[MAX_LINE]; 
 
     do {      
         do {
@@ -81,8 +86,6 @@ int main(int argc, char *argv[]){
             char num_packets_[MAX_LINE];
             char packet_num_[MAX_LINE];
             char size_[MAX_LINE];
-            char filename[MAX_LINE]; 
-            char payload[MAX_LINE];   
             char* curr_buf = buf;
 
             curr_index = 0;
@@ -139,6 +142,8 @@ int main(int argc, char *argv[]){
             }
             if (*curr_buf != ':'){ // something is incorrect
                 sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
+                for (int i = 0; i < strlen(filename); ++i)
+                    *(filename + i) = '\0';
                 continue;
             }
 
@@ -153,29 +158,63 @@ int main(int argc, char *argv[]){
             }
 
             if (curr_index != size){ // something is incorrect
+                for (int i = 0; i < curr_index; ++i) // reset
+                    *(payload + i) = '\0';
+                for (int i = 0; i < strlen(filename); ++i)
+                    *(filename + i) = '\0';
                 sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
                 continue;
             }
 
-            fp = (packet_num == 0) ? fopen(filename, "wb") : fopen(filename, "ab");
-            if (fp == NULL){
-                sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
-                perror("filename");
-                close(server_socket);
-                exit(1);
-            }
-            
-            fwrite(payload, sizeof(unsigned char), size, fp);
-            fclose(fp);
+            if (prev_packet_num == packet_num - 1){ // Detect successfully received (incremented packet num)
+                fp = (prev_packet_num == 0) ? fopen(filename, "wb") : fopen(filename, "ab");
+                if (fp == NULL){
+                    sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
+                    perror("filename");
+                    close(server_socket);
+                    exit(1);
+                }
+                
+                fwrite(prev_payload, sizeof(unsigned char), prev_size, fp);
+                fclose(fp);
 
-            printf("num_packets: %d\n", num_packets);
-            printf("packet_num: %d\n", packet_num);
-            printf("size: %d\n", size);
-            printf("filename: %s\n", filename);
-            printf("payload: %s\n", payload);
+                printf("num_packets: %d\n", num_packets);
+                printf("packet_num: %d\n", prev_packet_num);
+                printf("size: %d\n", prev_size);
+                printf("filename: %s\n", filename);
+                //printf("payload: %s\n", prev_payload);
+            }
+
+            for (int i = 0; i < strlen(prev_payload); ++i)
+                *(prev_payload + i) = '\0';
+
             sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
+
+            for (int i = 0; i < MAX_LINE * 2; ++i)
+                *(prev_payload + i) = *(payload + i);
+            for (int i = 0; i < MAX_LINE * 2; ++i)
+                *(payload + i) = '\0';
+
+            prev_packet_num = packet_num;
+            prev_size = size;
         } while (curr_index != size);
     } while (packet_num < num_packets - 1);
+    
+    // Last packet..
+    fp = (prev_packet_num == 0) ? fopen(filename, "wb") : fopen(filename, "ab");
+    if (fp == NULL){
+        sendto(server_socket, "no", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin)); 
+        perror("filename");
+        close(server_socket);
+        exit(1);
+    }
+    fwrite(prev_payload, sizeof(unsigned char), prev_size, fp);
+    fclose(fp);
+    printf("num_packets: %d\n", num_packets);
+    printf("packet_num: %d\n", prev_packet_num);
+    printf("size: %d\n", prev_size);
+    printf("filename: %s\n", filename);
+    //printf("payload: %s\n", prev_payload);
 
     close(server_socket);
 }

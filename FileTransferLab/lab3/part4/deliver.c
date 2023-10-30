@@ -11,6 +11,7 @@
 #include <time.h>
 #include <math.h>
 #include "packet.h"
+#include <fcntl.h>
 
 char *my_itoa(int num, char *str){
     if (str == NULL)
@@ -21,6 +22,7 @@ char *my_itoa(int num, char *str){
 }
 
 int main(int argc, char * argv[]){
+    double t1 = -1; // dummy value (should never work)
     struct hostent *hp;
     struct sockaddr_in sin;
     char buf[MAX_LINE]; // buffer to store result from recvfrom
@@ -31,7 +33,7 @@ int main(int argc, char * argv[]){
     FILE *fp; //pointer to file
 
     Packet **packets; // array of struct packet
-    packets = calloc(100,sizeof(Packet*)); //alocate 100 pointers to packet structs
+    packets = malloc(sizeof(Packet*) * 5000); //alocate 100 pointers to packet structs
     
     char payload[3 * MAX_LINE];
     char tmp[MAX_LINE];
@@ -106,12 +108,28 @@ int main(int argc, char * argv[]){
 
     printf("File successfully opened. File size: %d\n", filesize);
 
-    sendto(deliver_socket, "ftp", strlen("ftp"), 0, (struct sockaddr*) &sin, sizeof(sin));
-    if (recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
-        perror("recvfrom");
-        close(deliver_socket);
-        exit(1);  
+    while (1){
+        sendto(deliver_socket, "ftp", strlen("ftp"), 0, (struct sockaddr*) &sin, sizeof(sin));
+        clock_t start = clock();
+        int res = recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len);
+        if (res < 0){ 
+            perror("recvfrom");
+            close(deliver_socket);
+            exit(1);
+        }
+
+        else {
+            clock_t end = clock(); // end measuring time
+            double seconds = (float)(end - start) / CLOCKS_PER_SEC;
+            printf("Round-trip time for sending ftp from the server to deliver: %lf seconds\n", seconds);
+            t1 = seconds * 20 * pow(10, 9);
+            break;
+        }
     }
+
+    int flags = fcntl(deliver_socket, F_GETFL, 0);
+    flags |= O_NONBLOCK;
+    fcntl(deliver_socket, F_SETFL, flags);
 
     buf[strlen("yes")] = '\0'; // safety
     if (!strcmp(buf, "yes")){ // buf == "yes"
@@ -125,8 +143,8 @@ int main(int argc, char * argv[]){
 
     for (int j = 0; j < num_packets; j++){
         num_bytes = (filesize > MAX_LINE) ? MAX_LINE : filesize;        
-        
-        packets[j] = calloc(1, sizeof(Packet));
+
+        packets[j] = (Packet*) malloc(sizeof(Packet));
         packets[j]->size = num_bytes;
         packets[j]->filename = filepath + 2;
         packets[j]->frag_no = j;
@@ -138,7 +156,7 @@ int main(int argc, char * argv[]){
         my_itoa(packets[j]->frag_no, tmp);
         memcpy(payload + strlen(payload), tmp, sizeof(tmp));
         memcpy(payload + strlen(payload), ":", sizeof(":"));
-        
+
         my_itoa(packets[j]->size, tmp);
         memcpy(payload + strlen(payload), tmp, sizeof(tmp));
         memcpy(payload + strlen(payload), ":", sizeof(":"));
@@ -149,19 +167,39 @@ int main(int argc, char * argv[]){
 
         memcpy(payload + strlen(payload), packets[j]->filedata, sizeof(packets[j]->filedata));
 
-        do { // for validating whether the packet is sent properly
+        while (1) { // for validating whether the packet is sent properly
             printf("Sending packet %d (payload sized %d)\n", j, num_bytes);
             sendto(deliver_socket, payload, sizeof(payload), 0, (struct sockaddr*) &sin, sizeof(sin));
-
             *(buf + addr_len) = '\0'; // safety
 
+            struct timeval timeout;
+            timeout.tv_sec = 0; 
+            timeout.tv_usec = t1;
+            clock_t start = clock(); // start measuring time
+            nanosleep(&timeout, NULL);
+
             if (recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
-                perror("recvfrom");
-                close(deliver_socket);
-                exit(1);  
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    printf("Timeout Occured\n"); // Failed to run within t1
+                else {  
+                    perror("recvfrom");
+                    close(deliver_socket);
+                    exit(1);
+                }
             }
 
-        } while (strcmp(buf, "yes")); // buf != "yes"
+            else {
+                clock_t end = clock(); // end measuring time
+                double seconds = (float)(end - start) / CLOCKS_PER_SEC;
+                //t1 = second * 9;
+                if (strcmp(buf, "yes")) // buf != "yes"
+                    printf("NACK Received: Round-trip time was %lf seconds\n", seconds);
+                else {
+                    printf("ACK Received: Round-trip time was %lf seconds\n", seconds); 
+                    break;
+                }
+            }
+        } 
 
         printf("Packet %d sent\n", j);
 

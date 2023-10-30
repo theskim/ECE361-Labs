@@ -11,8 +11,10 @@
 #include <time.h>
 #include <math.h>
 #include "packet.h"
+#include <fcntl.h>
 
-#define t1 5000 // estimated round trip time (100ns - 300ns from part 2 -> 300 * 1.2 = 360ns)
+#define t1 1680000 // estimated round trip time (100us - 1400us from part 2 -> 1400 * 1000 * 1.2 = 1680000 ns)
+//#define t1 10000 
 
 char *my_itoa(int num, char *str){
     if (str == NULL)
@@ -70,16 +72,20 @@ int main(int argc, char * argv[]){
         exit(1);
     }
 
+    int flags = fcntl(deliver_socket, F_GETFL, 0);
+    flags |= O_NONBLOCK;
+    fcntl(deliver_socket, F_SETFL, flags);
+
     struct timeval timeout;
     timeout.tv_sec = 0; 
     timeout.tv_usec = t1;
 
     // Set the timeout for the socket using setsockopt
-    if (setsockopt(deliver_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0){
-        perror("setsockopt");
-        close(deliver_socket);
-        exit(1);
-    }
+    // if (setsockopt(deliver_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0){
+    //     perror("setsockopt");
+    //     close(deliver_socket);
+    //     exit(1);
+    // }
 
     char str1[MAX_LINE];
     char str2[MAX_LINE];
@@ -122,10 +128,12 @@ int main(int argc, char * argv[]){
     while (1){
         sendto(deliver_socket, "ftp", strlen("ftp"), 0, (struct sockaddr*) &sin, sizeof(sin));
         clock_t start = clock(); // start measuring time
+        nanosleep(&timeout, NULL);
 
-        if (recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
+        int res = recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len);
+        if (res < 0){
             if (errno == EAGAIN || errno == EWOULDBLOCK){
-                clock_t end = clock(); // end measuring time
+                clock_t end = clock(); 
                 float seconds = (float)(end - start) / CLOCKS_PER_SEC;
                 printf("Timeout Occured: exceeded %f seconds\n", seconds);
             } else {
@@ -186,6 +194,8 @@ int main(int argc, char * argv[]){
             *(buf + addr_len) = '\0'; // safety
 
             clock_t start = clock(); // start measuring time
+            nanosleep(&timeout, NULL);
+
             if (recvfrom(deliver_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                     printf("Timeout Occured\n"); // Failed to run within t1

@@ -1,1 +1,1 @@
-rm -f a1.tar.gz && tar -czvf names_a1.tar.gz FileTransferLab
+rm -f a1.tar.gz && tar -czvf Kim-Sean-Vernooy-Matt_a1.tar.gz FileTransferLab/lab3

@@ -16,10 +16,10 @@
 int main(int argc, char * argv[]){
 
     struct message {
-    unsigned int type;
-    unsigned int size;
-    unsigned char source[MAX_NAME];
-    unsigned char data[MAX_DATA];
+        unsigned int type;
+        unsigned int size;
+        unsigned char source[MAX_NAME];
+        unsigned char data[MAX_DATA];
     };
 
     //start by connecting/registering. user needs to pass host IP, host port. Then if successful, register by passing password and id
@@ -38,7 +38,7 @@ int main(int argc, char * argv[]){
     char port_passed[MAX_LINE];
     if (scanf("%s %s %s %s %s", command, ID, password, IP, port_passed) != 5){
         perror("should have five arguments");
-        close(deliver_socket);
+        //close(deliver_socket);
         exit(1);
     }
 

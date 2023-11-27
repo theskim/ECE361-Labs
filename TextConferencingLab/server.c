@@ -15,8 +15,8 @@
 #define MAX_DATA 100
 
 //hard-coded users:
-unsigned char IDs[4][10] = {"Steve","Jill","Grace","Joe"};
-unsigned char passwords[4][10] = {"Steve1","Jill2","Grace3","Joe4"};
+unsigned char IDs[4][10] = {"Steve", "Jill", "Grace", "Joe"};
+unsigned char passwords[4][10] = {"Steve1", "Jill2", "Grace3", "Joe4"};
 
 struct client {
     unsigned char IP[MAX_NAME];
@@ -26,14 +26,14 @@ struct client {
     unsigned char ID[MAX_NAME];
     //char *ID;
     struct client *next;
-    };
+};
 
 struct message {
     unsigned int type;
     unsigned int size;
     unsigned char source[MAX_NAME];
     unsigned char data[MAX_DATA];
-    };
+};
 
 
 struct client *head = NULL;
@@ -42,14 +42,11 @@ int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, u
 {
     int flag = 0;
 
-    for(int i = 0; i < 4; i++)
-    {
-        if(!strcmp(IDs[i],ID) && !strcmp(passwords[i], password))
+    for (int i = 0; i < 4; i++)
+        if (!strcmp((char *)IDs[i], (char *)ID) && !strcmp((char *)passwords[i], (char *)password))
             flag = 1;
-    }
 
-    if(!flag)
-    {
+    if (!flag){
         printf("Invalid credentials");
         return -1;
     }
@@ -58,17 +55,16 @@ int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, u
     newNode->session_ID = -1;
     //newNode->ID = ID;
     //newNode->IP = IP;
-    strcpy(newNode->ID,ID);
-    strcpy(newNode->IP,IP);
+    strcpy((char *)newNode->ID, (char *)ID);
+    strcpy((char *)newNode->IP, (char *)IP);
     newNode->port = port;
     newNode->next = NULL;
 
     struct client *traverser = head;
-    while(traverser->next!=NULL && strcmp(traverser->ID,ID))
+    while(traverser->next!=NULL && strcmp((char *)traverser->ID,(char *)ID))
         traverser = traverser->next;
     
-    if(!strcmp(traverser->ID,ID))
-    {
+    if(!strcmp((char *)traverser->ID, (char *)ID)){
         printf("User already registered");
         return -1;
     }
@@ -79,19 +75,16 @@ int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, u
 
 int remove_client(unsigned char IP[])
 {
-    if (head!=NULL)
-        if(head->next == NULL && !strcmp(head->IP,IP))
-        {
+    if (head != NULL){
+        if (head->next == NULL && !strcmp((char *)head->IP, (char *)IP)){
             head = NULL;
             return 1;
         }
-        if(head->next == NULL && strcmp(head->IP,IP))
-        {
+        if (head->next == NULL && strcmp((char *)head->IP, (char *)IP)){
             printf("ID not found");
             return -1;
         }
-    else
-    {
+    } else {
         printf("List already empty");
         return -1; 
     }
@@ -99,12 +92,12 @@ int remove_client(unsigned char IP[])
     struct client *traverser = head->next;
     struct client *prev_node = head;
 
-    while(traverser->next!=NULL && strcmp(traverser->IP,IP))
+    while(traverser->next!=NULL && strcmp((char *)traverser->IP, (char *)IP)){
         prev_node = prev_node->next;
         traverser = traverser->next;
+    }
 
-    if(strcmp(traverser->IP,IP))
-    {
+    if (strcmp((char *)traverser->IP,(char *)IP)){
         printf("ID not found");
         return -1;
     }

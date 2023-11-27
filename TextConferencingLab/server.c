@@ -9,37 +9,15 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include "message.h"
 
-#define MAX_NAME 20
-#define MAX_PASSWORD 30
-#define MAX_DATA 100
+// hard-coded users:
+unsigned char IDs[][MAX_NAME] = {"Steve", "Jill", "Grace", "Joe"};
+unsigned char passwords[][MAX_PASSWORD] = {"Steve1", "Jill2", "Grace3", "Joe4"};
 
-//hard-coded users:
-unsigned char IDs[4][10] = {"Steve", "Jill", "Grace", "Joe"};
-unsigned char passwords[4][10] = {"Steve1", "Jill2", "Grace3", "Joe4"};
+Client *head = NULL;
 
-struct client {
-    unsigned char IP[MAX_NAME];
-    //char *IP;
-    unsigned int port;
-    unsigned int session_ID;
-    unsigned char ID[MAX_NAME];
-    //char *ID;
-    struct client *next;
-};
-
-struct message {
-    unsigned int type;
-    unsigned int size;
-    unsigned char source[MAX_NAME];
-    unsigned char data[MAX_DATA];
-};
-
-
-struct client *head = NULL;
-
-int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, unsigned char password[])
-{
+int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, unsigned char password[]){
     int flag = 0;
 
     for (int i = 0; i < 4; i++)
@@ -51,20 +29,18 @@ int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, u
         return -1;
     }
     
-    struct client *newNode = malloc(sizeof(struct client));
+    Client *newNode = malloc(sizeof(Client));
     newNode->session_ID = -1;
-    //newNode->ID = ID;
-    //newNode->IP = IP;
     strcpy((char *)newNode->ID, (char *)ID);
     strcpy((char *)newNode->IP, (char *)IP);
     newNode->port = port;
     newNode->next = NULL;
 
-    struct client *traverser = head;
-    while(traverser->next!=NULL && strcmp((char *)traverser->ID,(char *)ID))
+    Client *traverser = head;
+    while (traverser->next!=NULL && strcmp((char *)traverser->ID,(char *)ID))
         traverser = traverser->next;
     
-    if(!strcmp((char *)traverser->ID, (char *)ID)){
+    if (!strcmp((char *)traverser->ID, (char *)ID)){
         printf("User already registered");
         return -1;
     }
@@ -89,10 +65,10 @@ int remove_client(unsigned char IP[])
         return -1; 
     }
     
-    struct client *traverser = head->next;
-    struct client *prev_node = head;
+    Client *traverser = head->next;
+    Client *prev_node = head;
 
-    while(traverser->next!=NULL && strcmp((char *)traverser->IP, (char *)IP)){
+    while(traverser->next != NULL && strcmp((char *)traverser->IP, (char *)IP)){
         prev_node = prev_node->next;
         traverser = traverser->next;
     }
@@ -106,13 +82,12 @@ int remove_client(unsigned char IP[])
     return 1;
 }
 
-
 int main(int argc, char *argv[]){
-    struct sockaddr_in sin;
-    char buf[MAX_DATA];
+    sockaddr_in sin;
     socklen_t addr_len = sizeof(sin);
     int server_socket;
     char* str_end;
+    char buf[MAX_DATA];
 
     //use me!
     //https://www.geeksforgeeks.org/socket-programming-in-cc-handling-multiple-clients-on-server-without-multi-threading/
@@ -140,24 +115,37 @@ int main(int argc, char *argv[]){
     }
     sin.sin_port = htons(port); // Convert values between host and network byte order
     
-    if ((bind(server_socket, (struct sockaddr*)&sin, sizeof(sin))) < 0) {
+    if ((bind(server_socket, (sockaddr*)&sin, sizeof(sin))) < 0) {
         perror("bind");
         close(server_socket);
         exit(1);
     }
 
-    if (recvfrom(server_socket, buf, sizeof(buf), 0, (struct sockaddr*) &sin, &addr_len) < 0){
-        perror("recvfrom");
+    if (listen(server_socket, SAFE_BACKLOG) < 0){
+        perror("listen");
         close(server_socket);
         exit(1);  
     }
 
-    //buf[strlen("ftp")] = '\0'; // safety
-    if (!strcmp(buf, "ftp")){
-        // reply with yes
-        sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));
-    } else {
-        // reply with no
-        sendto(server_socket, "no", strlen("no"), 0, (struct sockaddr*) &sin, sizeof(sin));
+    sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+
+    int client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
+    if (client_socket < 0) {
+        perror("accept");
+        close(server_socket);
+        exit(1);
     }
+    
+    if (read(client_socket, buf, MAX_DATA) < 0){
+        perror("read");
+        close(server_socket);
+        exit(1);
+    }
+
+    //buf[strlen("ftp")] = '\0'; // safety
+    if (!strcmp(buf, "ftp")) // reply with yes
+        sendto(server_socket, "yes", strlen("yes"), 0, (sockaddr*) &sin, sizeof(sin));
+    else // reply with no
+        sendto(server_socket, "no", strlen("no"), 0, (sockaddr*) &sin, sizeof(sin));
 }

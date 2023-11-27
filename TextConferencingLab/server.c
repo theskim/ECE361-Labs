@@ -16,8 +16,8 @@
 #define MAX_DATA 100
 
 //hard-coded users:
-char IDs[] = {"Steve","Jill","Grace","Joe"};
-char passwords[] = {"Steve1","Jill2","Grace3","Joe4"};
+unsigned char IDs[] = {"Steve","Jill","Grace","Joe"};
+unsigned char passwords[] = {"Steve1","Jill2","Grace3","Joe4"};
 
 struct client {
     unsigned char IP[MAX_NAME];
@@ -37,8 +37,19 @@ struct message {
 
 struct client *head = NULL;
 
-client insert_client(unsigned char[] ID, unsigned char[] IP, unsigned int port)
+int register_client(unsigned char[] ID, unsigned char[] IP, unsigned int port,unsigned char[] password)
 {
+    bool flag = false;
+    for(int i = 0; i < 4; i++)
+    {
+        if(!strcmp(IDs[i],ID) && !strcmp(passwods[i], password))
+            flag = true;
+    }
+
+    if(!flag)
+        printf("Invalid credentials");
+        return -1
+    
     struct client *newNode = malloc(sizeof(struct client));
     newNode->session_ID = -1;
     newNode->ID = ID;
@@ -47,10 +58,17 @@ client insert_client(unsigned char[] ID, unsigned char[] IP, unsigned int port)
     newNode->next = NULL;
 
     struct client *traverser = head;
-    while(traverser->next!=NULL)
+    while(traverser->next!=NULL && strcmp(traverser->ID,ID))
         traverser = traverser->next;
     
+    if(!strcmp(traverser->ID,ID))
+    {
+        printf("User already registered");
+        return -1;
+    }
+    
     traverser->next = newNode;
+    return 1;
 }
 
 int remove_client(unsigned char[] IP)
@@ -77,7 +95,8 @@ int remove_client(unsigned char[] IP)
         printf("ID not found");
         return -1;
 
-    if(prev_node->next = traverser->next);
+    prev_node->next = traverser->next;
+    return 1;
 }
 
 
@@ -126,7 +145,7 @@ int main(int argc, char *argv[]){
         exit(1);  
     }
 
-    buf[strlen("ftp")] = '\0'; // safety
+    //buf[strlen("ftp")] = '\0'; // safety
     if (!strcmp(buf, "ftp")){
         // reply with yes
         sendto(server_socket, "yes", strlen("yes"), 0, (struct sockaddr*) &sin, sizeof(sin));

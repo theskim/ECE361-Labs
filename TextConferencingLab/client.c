@@ -66,9 +66,9 @@ int main(int argc, char * argv[]){
     }
 
     char register_request[MAX_LINE];
-    strcat(register_request,str2);
+    strcat(register_request,ID);
     strcat(register_request,":");
-    strcat(register_request,str3);
+    strcat(register_request,password);
     
 
     sendto(deliver_socket, register_request, strlen(register_request), 0, (struct sockaddr*) &sin, sizeof(sin));

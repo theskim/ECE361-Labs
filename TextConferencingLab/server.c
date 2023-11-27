@@ -9,21 +9,22 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include "packet.h"
 
 #define MAX_NAME 20
 #define MAX_PASSWORD 30
 #define MAX_DATA 100
 
 //hard-coded users:
-unsigned char IDs[] = {"Steve","Jill","Grace","Joe"};
-unsigned char passwords[] = {"Steve1","Jill2","Grace3","Joe4"};
+unsigned char IDs[4][10] = {"Steve","Jill","Grace","Joe"};
+unsigned char passwords[4][10] = {"Steve1","Jill2","Grace3","Joe4"};
 
 struct client {
     unsigned char IP[MAX_NAME];
+    //char *IP;
     unsigned int port;
     unsigned int session_ID;
     unsigned char ID[MAX_NAME];
+    //char *ID;
     struct client *next;
     };
 
@@ -37,23 +38,28 @@ struct message {
 
 struct client *head = NULL;
 
-int register_client(unsigned char[] ID, unsigned char[] IP, unsigned int port,unsigned char[] password)
+int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, unsigned char password[])
 {
-    bool flag = false;
+    int flag = 0;
+
     for(int i = 0; i < 4; i++)
     {
-        if(!strcmp(IDs[i],ID) && !strcmp(passwods[i], password))
-            flag = true;
+        if(!strcmp(IDs[i],ID) && !strcmp(passwords[i], password))
+            flag = 1;
     }
 
     if(!flag)
+    {
         printf("Invalid credentials");
-        return -1
+        return -1;
+    }
     
     struct client *newNode = malloc(sizeof(struct client));
     newNode->session_ID = -1;
-    newNode->ID = ID;
-    newNode->IP = IP;
+    //newNode->ID = ID;
+    //newNode->IP = IP;
+    strcpy(newNode->ID,ID);
+    strcpy(newNode->IP,IP);
     newNode->port = port;
     newNode->next = NULL;
 
@@ -71,18 +77,24 @@ int register_client(unsigned char[] ID, unsigned char[] IP, unsigned int port,un
     return 1;
 }
 
-int remove_client(unsigned char[] IP)
+int remove_client(unsigned char IP[])
 {
     if (head!=NULL)
         if(head->next == NULL && !strcmp(head->IP,IP))
+        {
             head = NULL;
             return 1;
+        }
         if(head->next == NULL && strcmp(head->IP,IP))
+        {
             printf("ID not found");
             return -1;
+        }
     else
+    {
         printf("List already empty");
         return -1; 
+    }
     
     struct client *traverser = head->next;
     struct client *prev_node = head;
@@ -92,8 +104,10 @@ int remove_client(unsigned char[] IP)
         traverser = traverser->next;
 
     if(strcmp(traverser->IP,IP))
+    {
         printf("ID not found");
         return -1;
+    }
 
     prev_node->next = traverser->next;
     return 1;
@@ -102,7 +116,7 @@ int remove_client(unsigned char[] IP)
 
 int main(int argc, char *argv[]){
     struct sockaddr_in sin;
-    char buf[MAX_LINE * 3];
+    char buf[MAX_DATA];
     socklen_t addr_len = sizeof(sin);
     int server_socket;
     char* str_end;

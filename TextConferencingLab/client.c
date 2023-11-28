@@ -249,9 +249,9 @@ int main(int argc, char * argv[]){
             // received message is like: ID|session_ID|ID|session_ID...
             // printing id and session id per line
             printf("List of Users and Associated Sessions:\n");
+            printf("---------------------------\n");
             char* token = strtok((char *)message_received->data, "|");
             while (token != NULL){
-                printf("---------------------------\n");
                 printf("ID: %s, ", token);
                 token = strtok(NULL, "|");
                 if (!strcmp(token, "-1"))
@@ -264,6 +264,9 @@ int main(int argc, char * argv[]){
         } 
     }
 
-    free(message_sent);
-    printf("Exiting client %s...\n", ID);
+    if (message_sent != NULL)  // free the memory to avoid memory leak
+        free(message_sent); 
+    if (message_received != NULL)
+        free(message_received);
+    printf("Exiting Client ID %s...\n", ID);
 }

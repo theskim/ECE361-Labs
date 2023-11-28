@@ -89,6 +89,13 @@ int remove_client(unsigned char* ID){
         return -1; 
     }
     
+    if (!strcmp((char *)head->ID, (char *)ID)){
+        Client* temp = head;
+        head = head->next;
+        free(temp);
+        return 1;
+    }
+    
     Client *traverser = head->next;
     Client *prev_node = head;
 
@@ -167,6 +174,7 @@ void* client_receiver(void* args){
         // TODO
     }
     else if (message->type == LEAVE_SESS){
+        
         // TODO
     }
     else if (message->type == NEW_SESS){
@@ -206,7 +214,6 @@ void* client_receiver(void* args){
 }
 
 int main(int argc, char *argv[]){
-    head = NULL;
     sockaddr_in sin;
     socklen_t addr_len = sizeof(sin);
     int server_socket;
@@ -280,7 +287,6 @@ int main(int argc, char *argv[]){
             exit(1);
         }
 
-        printf("Assigned Thread\n");
         pthread_join(new_thread, NULL);
     }
     

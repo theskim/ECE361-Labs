@@ -81,8 +81,7 @@ int remove_client(unsigned char* ID){
     printf("Removing client ID = %s \n", ID);
     if (head != NULL){
         if (head->next == NULL && !strcmp((char *)head->ID, (char *)ID)){
-            free(head);
-            head = NULL;
+            smart_free((void**)&head); // free the memory to avoid memory leak
             return 1;
         }
         if (head->next == NULL && strcmp((char *)head->ID, (char *)ID)){
@@ -97,7 +96,7 @@ int remove_client(unsigned char* ID){
     if (!strcmp((char *)head->ID, (char *)ID)){
         Client* temp = head;
         head = head->next;
-        free(temp);
+        smart_free((void** )&temp); // free the memory to avoid memory leak
         return 1;
     }
     
@@ -114,7 +113,7 @@ int remove_client(unsigned char* ID){
     }
     
     prev_node->next = traverser->next;
-    free(traverser);
+    smart_free((void** )&traverser); 
 
     return 1;
 }
@@ -125,7 +124,7 @@ void* client_receiver(void* args){
     int client_socket = arguments.socket;
     char* client_IP = arguments.IP;
     int client_port = arguments.port;
-    free(args);
+    smart_free((void** )&args); 
 
     char string_received[MAX_DATA];
     int read_size;
@@ -149,21 +148,21 @@ void* client_receiver(void* args){
         // Check if NACK of login
         if (message->size == 0 || !message->source || !message->data){ // check if size is 0 (loss)
             new_message.type = LO_NAK;
-            new_message.size = strlen("empty fields (potential packet loss)");
+            new_message.size = strlen("Empty fields (potential packet loss)");
             strcpy((char *)new_message.source, "server");
-            strcpy((char *)new_message.data, "empty fields (potential packet loss)");
+            strcpy((char *)new_message.data, "Empty fields (potential packet loss)");
         } 
         else if (register_client(message->source, client_IP, client_port, message->data) == -1){ // check if valid login
             new_message.type = LO_NAK;
-            new_message.size = strlen("registration failed, user already exists");
+            new_message.size = strlen("Registration failed, User already exists");
             strcpy((char *)new_message.source, "server");
-            strcpy((char *)new_message.data, "registration failed, user already exists");
+            strcpy((char *)new_message.data, "Registration failed, User already exists");
         }
         else {  
             new_message.type = LO_ACK;
-            new_message.size = strlen("successful");
+            new_message.size = strlen("Successful");
             strcpy((char *)new_message.source, "server");
-            strcpy((char *)new_message.data, "successful");
+            strcpy((char *)new_message.data, "Successful");
         }
 
         char* message_string = get_string_from_message(new_message);
@@ -214,7 +213,8 @@ void* client_receiver(void* args){
         new_message->size = strlen((char *)new_message->data);
         print_message(*new_message);
         char* message_string = get_string_from_message(*new_message);
-        free(new_message);
+        smart_free((void** )&new_message); // free the memory to avoid memory leak
+        
         printf("%s\n", message_string);
         if (write(client_socket, message_string, strlen(message_string)) < 0){
             perror("write");

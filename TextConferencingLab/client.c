@@ -58,12 +58,8 @@ int main(int argc, char * argv[]){
 
     do {
         clear_buffer(buf); // clear buffer
-        if (message_sent != NULL)  // free the memory to avoid memory leak
-            free(message_sent); 
-        if (message_received != NULL)
-            free(message_received);
-        message_sent = NULL;
-        message_received = NULL;
+        smart_free((void** )&message_sent); // free the memory to avoid memory leak
+        smart_free((void** )&message_received);
 
         // /login <client ID> <password> <server-IP> <server-port>
         // if something is missing, then we should exit
@@ -107,10 +103,12 @@ int main(int argc, char * argv[]){
         char* message_string = get_string_from_message(*message_sent);
 
         if (write(deliver_socket, message_string, strlen(message_string)) < 0){
+            smart_free((void** )&message_sent); // free the memory to avoid memory leak
             perror("write");
             close(deliver_socket);
             exit(1);
         }
+        smart_free((void** )&message_sent); // free the memory to avoid memory leak
 
         if (read(deliver_socket, buf, MAX_LINE) < 0){
             perror("read");
@@ -140,12 +138,8 @@ int main(int argc, char * argv[]){
         printf("\t/quit\n");
 
         clear_buffer(buf); // clear buffer
-        if (message_sent != NULL)  // free the memory to avoid memory leak
-            free(message_sent); 
-        if (message_received != NULL)
-            free(message_received);
-        message_sent = NULL;
-        message_received = NULL;
+        smart_free((void** )&message_sent); // free the memory to avoid memory leak
+        smart_free((void** )&message_received);
 
         message_sent = malloc(sizeof(Message));
         message_sent->type = INVALID;
@@ -242,10 +236,12 @@ int main(int argc, char * argv[]){
 
         char* message_string = get_string_from_message(*message_sent); // get message string from message
         if (write(deliver_socket, message_string, strlen(message_string)) < 0){
+            smart_free((void**)&message_sent); // free the memory to avoid memory leak
             perror("write");
             close(deliver_socket);
             exit(1);
         }
+        smart_free((void** )&message_sent); // free the memory to avoid memory leak
 
         if (message_sent->type == EXIT) // only exit if user types /quit
             break;
@@ -276,9 +272,7 @@ int main(int argc, char * argv[]){
         } 
     }
 
-    if (message_sent != NULL)  // free the memory to avoid memory leak
-        free(message_sent); 
-    if (message_received != NULL)
-        free(message_received);
+    smart_free((void** )&message_sent); // free the memory to avoid memory leak
+    smart_free((void** )&message_received);
     printf("Exiting Client ID %s...\n", ID);
 }

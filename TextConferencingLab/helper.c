@@ -10,6 +10,14 @@ void clear_buffer(char* buf){
         buf[i] = '\0';
 }
 
+// Helper function to free a given pointer and set it to NULL
+void smart_free(void** ptr){
+    if (*ptr != NULL){
+        free(*ptr);
+        *ptr = NULL;
+    }
+}
+
 // Helper function to display a message for debugging purposes
 void print_message(Message message){
     printf("Message:\n");
@@ -19,7 +27,7 @@ void print_message(Message message){
     printf("\tData: %s\n", message.data);
 }
 
-// Given a message, convert it to a string
+// Given a message, convert it to a string (NOTE THAT THIS FUNCTION USES MALLOC, USER MUST FREE THE RETURNED STRING)
 char* get_string_from_message(Message message){
     // Format: type:size:source:data 
     char* message_string = malloc(MAX_LINE);

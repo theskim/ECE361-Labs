@@ -131,6 +131,14 @@ int main(int argc, char * argv[]){
     while (true){
         // available commands
         // /logout, /joinsession <session ID>, /leavesession, /createsession <session ID>, /list, /quit
+        printf("\nAvailable Commands:\n");
+        printf("\t/logout\n");
+        printf("\t/joinsession <session ID>\n");
+        printf("\t/leavesession\n");
+        printf("\t/createsession <session ID>\n");
+        printf("\t/list\n");
+        printf("\t/quit\n");
+
         clear_buffer(buf); // clear buffer
         if (message_sent != NULL)  // free the memory to avoid memory leak
             free(message_sent); 
@@ -145,6 +153,9 @@ int main(int argc, char * argv[]){
         char new_command[MAX_LINE];
         char optional_second_arg[MAX_LINE];
         char user_input[MAX_LINE]; // we need fgets because we need one or two arguments not a set number of inputs like scanf
+        new_command[0] = '\0';
+        optional_second_arg[0] = '\0';
+
         if (fgets(user_input, sizeof(user_input), stdin) == NULL)
             continue;
 
@@ -155,7 +166,9 @@ int main(int argc, char * argv[]){
         } else if (num_args > 2){
             printf("Too many arguments.\n");
             continue;
-        }
+        } else if (strlen(new_command) == 0){ // if user enters nothing 
+            continue;
+        } 
 
         if (!strcmp(new_command, "/logout")){       
             if (num_args == 2){ // logout has one argument
@@ -211,7 +224,8 @@ int main(int argc, char * argv[]){
             message_sent->type = EXIT;
         }
         else {
-            printf("invalid command, please try it again...\n");
+            printf("\nInvalid command, Please try it again...\n");
+            printf("bruh : %s %s \n\n", new_command, optional_second_arg);
             continue;
         }
 
@@ -248,18 +262,16 @@ int main(int argc, char * argv[]){
         if (!strcmp(new_command, "/list")){ // list session
             // received message is like: ID|session_ID|ID|session_ID...
             // printing id and session id per line
-            printf("List of Users and Associated Sessions:\n");
-            printf("---------------------------\n");
-            char* token = strtok((char *)message_received->data, "|");
-            while (token != NULL){
-                printf("ID: %s, ", token);
-                token = strtok(NULL, "|");
-                if (!strcmp(token, "-1"))
+            printf("\nList of Users and Associated Sessions:\n");
+            char* split = strtok((char *)message_received->data, "|");
+            while (split != NULL){
+                printf("\tID: %s, ", split);
+                split = strtok(NULL, "|");
+                if (!strcmp(split, "-1"))
                     printf("No Session\n");
                 else
-                    printf("Session ID: %s\n", token);
-                token = strtok(NULL, "|");
-                printf("---------------------------\n");
+                    printf("Session ID: %s\n", split);
+                split = strtok(NULL, "|");
             }
         } 
     }

@@ -136,7 +136,6 @@ void* client_receiver(void* args){
         exit(1);
     }
     string_received[read_size] = '\0'; // safety in case 
-    printf("%s\n", string_received);
 
     Message* message = malloc(sizeof(Message));
     *message = (Message){0, 0, "", ""}; // empty message

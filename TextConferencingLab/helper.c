@@ -12,10 +12,11 @@ void clear_buffer(char* buf){
 
 // Helper function to display a message for debugging purposes
 void print_message(Message message){
-    printf("Type: %d\n", message.type);
-    printf("Size: %d\n", message.size);
-    printf("Source: %s\n", message.source);
-    printf("Data: %s\n", message.data);
+    printf("Message:\n");
+    printf("\tType: %d\n", message.type);
+    printf("\tSize: %d\n", message.size);
+    printf("\tSource: %s\n", message.source);
+    printf("\tData: %s\n", message.data);
 }
 
 // Given a message, convert it to a string

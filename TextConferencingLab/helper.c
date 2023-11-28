@@ -4,6 +4,11 @@
 #include <errno.h>
 #include "message.h"
 
+void clear_buffer(char* buf){
+    for (int i = 0; i < MAX_LINE; ++i)
+        buf[i] = '\0';
+}
+
 void print_message(Message message){
     printf("Type: %d\n", message.type);
     printf("Size: %d\n", message.size);

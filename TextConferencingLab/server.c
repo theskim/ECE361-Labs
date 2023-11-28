@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include "message.h"
 #include "helper.h"
 
@@ -22,14 +23,16 @@ Client* head = NULL;
 void print_clients(){
     Client* iterator = head;
     printf("Current Clients: \n");
+    int i = 0;
     while (iterator != NULL){
-        printf("Client 1: ID of %s, IP of %s, Port of %d, Session ID of %d\n", iterator->ID, iterator->IP, iterator->port, iterator->session_ID);
+        printf("Client %d: ID of %s, IP of %s, Port of %d, Session ID of %d\n", i, iterator->ID, iterator->IP, iterator->port, iterator->session_ID);
         iterator = iterator->next;
+        ++i;
     }
     printf("\n");
 }
 
-int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, unsigned char password[]){
+int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, unsigned char* password){
     // int flag = 0;
     // for (int i = 0; i < 4; i++)
     //     if (!strcmp((char *)IDs[i], (char *)ID) && !strcmp((char *)passwords[i], (char *)password))
@@ -46,6 +49,7 @@ int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, uns
     newNode->session_ID = -1;
     strcpy((char *)newNode->ID, (char *)ID);
     strcpy((char *)newNode->IP, (char *)IP);
+    strcpy((char *)newNode->password, (char *)password);
     newNode->port = port;
     newNode->next = NULL;
 
@@ -91,8 +95,8 @@ int remove_client(unsigned char* ID){
         prev_node = prev_node->next;
         traverser = traverser->next;
     }
-    if (strcmp((char *)traverser->IP,(char *)ID)){
-        printf("ID not found");
+    if (strcmp((char *)traverser->ID,(char *)ID)){
+        printf("ID not found\n");
         return -1;
     }
     
@@ -105,7 +109,7 @@ int remove_client(unsigned char* ID){
 void* client_receiver(void* args){
     thread_args arguments = *(thread_args*)args;
     int client_socket = arguments.socket;
-    unsigned char* client_IP = arguments.ip;
+    char* client_IP = arguments.ip;
     int client_port = arguments.port;
     free(args);
 
@@ -113,62 +117,68 @@ void* client_receiver(void* args){
     int read_size;
 
     // Read from client
-    while ((read_size = read(client_socket, string_received, MAX_DATA)) > 0){
-        string_received[read_size] = '\0'; // safety in case 
-        printf("%s\n", string_received);
+    if ((read_size = read(client_socket, string_received, MAX_DATA)) < 0){
+        perror("read");
+        exit(1);
+    }
+    string_received[read_size] = '\0'; // safety in case 
+    printf("%s\n", string_received);
 
-        Message* message = malloc(sizeof(Message));
-        *message = (Message){0, 0, "", ""}; // empty message
-        get_message_from_string(string_received, message); // get message from string
-        print_message(*message); // print message
+    Message* message = malloc(sizeof(Message));
+    *message = (Message){0, 0, "", ""}; // empty message
+    get_message_from_string(string_received, message); // get message from string
+    print_message(*message); // print message
 
-        // if valid, send ACK
-        if (message->type == LOGIN){
-            Message new_message;
-            
-            // Check if NACK of login
-            if (message->size == 0){
-                new_message.type = LO_NAK;
-                new_message.size = strlen("invalid size");
-                strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "invalid size (potential packet loss)");
-            } 
-            else if (!message->source){
-                new_message.type = LO_NAK;
-                new_message.size = strlen("invalid source");
-                strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "invalid src (potential packet loss)");
-            } 
-            else if (!message->data){
-                new_message.type = LO_NAK;
-                new_message.size = strlen("invalid password");
-                strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "invalid data (potential packet loss)");
-            } 
-            else {
-                new_message.type = LO_ACK;
-                new_message.size = strlen("successful");
-                strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "successful");
-
-                while (!register_client(message->source, client_IP, client_port, message->data)){
-                    printf("Failed to register client id %s\n", message->source);
-                }
-            }
-
-            char* message_string = get_string_from_message(new_message);
-            if (write(client_socket, message_string, strlen(message_string)) < 0){
-                perror("write");
-                exit(1);
-            }
+    // if valid, send ACK
+    if (message->type == LOGIN){
+        Message new_message;
+        
+        // Check if NACK of login
+        if (message->size == 0 || !message->source || !message->data){ // check if size is 0 (loss)
+            new_message.type = LO_NAK;
+            new_message.size = strlen("empty fields (potential packet loss)");
+            strcpy((char *)new_message.source, "server");
+            strcpy((char *)new_message.data, "empty fields (potential packet loss)");
         } 
-
-        else if (message->type == EXIT){
-            remove_client(message->source);
+        else if (register_client(message->source, client_IP, client_port, message->data) == -1){ // check if valid login
+            new_message.type = LO_NAK;
+            new_message.size = strlen("registration failed, user already exists");
+            strcpy((char *)new_message.source, "server");
+            strcpy((char *)new_message.data, "registration failed, user already exists");
+        }
+        else {  
+            new_message.type = LO_ACK;
+            new_message.size = strlen("successful");
+            strcpy((char *)new_message.source, "server");
+            strcpy((char *)new_message.data, "successful");
         }
 
-        print_clients();
+        char* message_string = get_string_from_message(new_message);
+        if (write(client_socket, message_string, strlen(message_string)) < 0){
+            perror("write");
+            exit(1);
+        }
+    } 
+    else if (message->type == EXIT){
+        remove_client(message->source);
     }
+    else if (message->type == JOIN){
+        // TODO
+    }
+    else if (message->type == LEAVE_SESS){
+        // TODO
+    }
+    else if (message->type == NEW_SESS){
+        // TODO
+    }
+    else if (message->type == MESSAGE){
+        // TODO
+    }
+    else if (message->type == QUERY){
+
+    }
+
+    print_clients();
 
     return 0;
 }
@@ -219,17 +229,24 @@ int main(int argc, char *argv[]){
         exit(1);  
     }
 
-    sockaddr_in client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-
     int client_socket;
     int* new_socket;
-    while ((client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len))){
+    while (true){
+        sockaddr_in client_addr;
+        socklen_t client_addr_len = sizeof(client_addr);
+
+        if ((client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len)) < 0){
+            perror("accept");
+            close(server_socket);
+            exit(1);
+        }
+
         char* client_IP = inet_ntoa(client_addr.sin_addr);
         int client_port = ntohs(client_addr.sin_port);
         printf("Connection accepted: client addr = %s:%d\n", client_IP, client_port);
 
         Thread new_thread;
+        
         thread_args* args = malloc(sizeof(thread_args)); // allocate memory for thread args
         args->socket = client_socket;
         args->ip = client_IP;

@@ -12,19 +12,10 @@
 #include "message.h"
 #include "helper.h"
 
-long check_login_args_return_port(char* command, char* ID, char* password, char* port_passed){
+long return_port(char* port_passed){
     char* str_end;
 
-    // check if user inputted wrong args
-    if (strcmp(command, "/login") ||
-        !strlen(ID) ||
-        !strlen(password) ||
-        !strlen(port_passed)){
-        perror("first command is not /login");
-        exit(1);
-    }
-    
-    // check if port is an integer
+    // check if port is valid
     long port = strtol(port_passed, &str_end, 10);
     if (errno == ERANGE || str_end == port_passed || *str_end != '\0'){
         perror("invalid port");
@@ -32,6 +23,18 @@ long check_login_args_return_port(char* command, char* ID, char* password, char*
     }
 
     return port;
+}
+
+void check_login_args(char* command, char* ID, char* password){
+    char* str_end;
+
+    // check if user inputted wrong args
+    if (strcmp(command, "/login") ||
+        !strlen(ID) ||
+        !strlen(password)){
+        perror("first command is not /login");
+        exit(1);
+    }
 }
 
 int main(int argc, char * argv[]){
@@ -50,49 +53,50 @@ int main(int argc, char * argv[]){
     char IP[MAX_LINE];
     char port_passed[MAX_LINE];
 
-    // /login <client ID> <password> <server-IP> <server-port>
-    // if something is missing, then we should exit
-    if (scanf("%s %s %s %s %s", command, ID, password, IP, port_passed) != 5){
-        perror("should have five arguments");
-        exit(1);
-    }
-
-    hp = gethostbyname(IP); // get host by name
-    bzero(&sin, sizeof(sin)); // fills a buffer with zero bytes
-    sin.sin_family = AF_INET; // IPv4
-
-    if (hp) 
-        bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length); // copy n bytes from src to dest
-    else {
-        perror("unknown host");
-        exit(1);
-    }
-
-    long port = check_login_args_return_port(command, ID, password, port_passed);
-    
-    sin.sin_port = htons(port); // Convert values between host and network byte order
-
-    if ((deliver_socket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("socket");
-        exit(1);
-    }
-
-    if (connect(deliver_socket, (sockaddr *)&sin, sizeof(sin)) < 0){
-        perror("connect");
-        close(deliver_socket);
-        exit(1);
-    }
-
     Message* message_sent = NULL;
     Message* message_received = NULL;
 
     do {
+        clear_buffer(buf); // clear buffer
         if (message_sent != NULL)  // free the memory to avoid memory leak
             free(message_sent); 
         if (message_received != NULL)
             free(message_received);
         message_sent = NULL;
         message_received = NULL;
+
+        // /login <client ID> <password> <server-IP> <server-port>
+        // if something is missing, then we should exit
+        if (scanf("%s %s %s %s %s", command, ID, password, IP, port_passed) != 5){
+            perror("should have five arguments");
+            exit(1);
+        }
+
+        hp = gethostbyname(IP); // get host by name
+        bzero(&sin, sizeof(sin)); // fills a buffer with zero bytes
+        sin.sin_family = AF_INET; // IPv4
+
+        if (hp) 
+            bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length); // copy n bytes from src to dest
+        else {
+            perror("unknown host");
+            exit(1);
+        }
+
+        long port = return_port(port_passed);
+        sin.sin_port = htons(port); // Convert values between host and network byte order
+        check_login_args(command, ID, password);
+
+        if ((deliver_socket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+            perror("socket");
+            exit(1);
+        }
+
+        if (connect(deliver_socket, (sockaddr *)&sin, sizeof(sin)) < 0){
+            perror("connect");
+            close(deliver_socket);
+            exit(1);
+        }
 
         message_sent = malloc(sizeof(Message));
         message_sent->type = LOGIN;
@@ -121,12 +125,13 @@ int main(int argc, char * argv[]){
         if (message_received->type == LO_ACK) // login successful
             printf("Registered Successfully.\n"); 
         else if (message_received->type == LO_NAK) // login not successful
-            printf("Login was not successful, try it again.\n");
+            printf("%s. Login was not successful, try it again.\n", message_received->data);
     } while (message_received->type != LO_ACK); // resend it until we get a proper ACK
 
     while (true){
         // available commands
         // /logout, /joinsession <session ID>, /leavesession, /createsession <session ID>, /list, /quit
+        clear_buffer(buf); // clear buffer
         if (message_sent != NULL)  // free the memory to avoid memory leak
             free(message_sent); 
         if (message_received != NULL)
@@ -139,39 +144,84 @@ int main(int argc, char * argv[]){
 
         char new_command[MAX_LINE];
         char optional_second_arg[MAX_LINE];
+        char user_input[MAX_LINE]; // we need fgets because we need one or two arguments not a set number of inputs like scanf
+        if (fgets(user_input, sizeof(user_input), stdin) == NULL)
+            continue;
 
-        if (scanf("%s %s", new_command, optional_second_arg) > 2){
-            printf("Should have one or two arguments. Try it again..\n");
+        int num_args = sscanf(user_input, "%s %s", new_command, optional_second_arg);
+        if (num_args == 0){
+            printf("No argument entered.\n");
+            continue;
+        } else if (num_args > 2){
+            printf("Too many arguments.\n");
             continue;
         }
 
         if (!strcmp(new_command, "/logout")){       
+            if (num_args == 2){ // logout has one argument
+                printf("Too many arguments.\n");
+                continue;
+            } 
             message_sent->type = EXIT;
             message_sent->size = strlen("l");
             strcpy((char *)message_sent->source, (char *)ID);
             strcpy((char *)message_sent->data, "l");
         }
         else if (!strcmp(new_command, "/joinsession")){ // join session
+            if (num_args == 1){ // joinsession has two arguments
+                printf("Not enough arguments.\n");
+                continue;
+            } 
             message_sent->type = JOIN;
+            // TODO
         }
         else if (!strcmp(new_command, "/leavesession")){ // leave session
+            if (num_args == 2){ // leavesession has one argument
+                printf("Too many arguments.\n");
+                continue;
+            } 
             message_sent->type = LEAVE_SESS;
+            // TODO
         }
-        else if (!strcmp(new_command, "/createsession")){ // create session
+        else if (!strcmp(new_command, "/createsession")){ // create session           
+            if (num_args == 1){ // createsession has two arguments
+                printf("Not enough arguments.\n");
+                continue;
+            } 
             message_sent->type = NEW_SESS;
+            // TODO
         }
         else if (!strcmp(new_command, "/list")){ // list session
+            if (num_args == 2){ // list has one argument
+                printf("Too many arguments.\n");
+                continue;
+            } 
             message_sent->type = QUERY;
             message_sent->size = strlen("q");
             strcpy((char *)message_sent->source, (char *)ID);
             strcpy((char *)message_sent->data, "q");
         }
         else if (!strcmp(new_command, "/quit")){ // quit session
+            if (num_args == 2){ // quit has one argument
+                printf("Too many arguments.\n");
+                continue;
+            } 
             message_sent->type = EXIT;
         }
         else {
-            printf("invalid command, please try it again, %s, %s\n", new_command, optional_second_arg);
+            printf("invalid command, please try it again...\n");
             continue;
+        }
+
+        if ((deliver_socket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+            perror("socket");
+            exit(1);
+        }
+
+        if (connect(deliver_socket, (sockaddr *)&sin, sizeof(sin)) < 0){
+            perror("connect");
+            close(deliver_socket);
+            exit(1);
         }
 
         char* message_string = get_string_from_message(*message_sent);

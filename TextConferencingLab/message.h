@@ -40,16 +40,17 @@ typedef struct message {
 } Message;
 
 typedef struct client {
-    unsigned char IP[MAX_NAME];
+    unsigned char IP[MAX_DATA];
     unsigned int port; 
     unsigned int session_ID;
     unsigned char ID[MAX_NAME];
+    unsigned char password[MAX_PASSWORD];
     struct client *next;
 } Client;
 
 typedef struct {
     int socket;
-    unsigned char* ip;
+    char* ip;
     int port;
 } thread_args;
 

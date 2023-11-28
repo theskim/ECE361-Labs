@@ -10,8 +10,6 @@
 #include <errno.h>
 #include "message.h"
 
-#define MAX_LINE 256
-
 long check_login_args_return_port(char* command, char* ID, char* password, hostent* hp, char* port_passed){
     char* str_end;
 
@@ -52,6 +50,25 @@ char* get_string_from_message(Message message){
     sprintf(message_string + strlen(message_string), "%s", message.data);
     
     return message_string;
+}
+
+void get_message_from_string(char* string_received, Message* message){
+    char* token = strtok(string_received, ":");
+
+    // Format: type:size:source:data -> seperate it by : and store it in message
+    for (int i = 0; i <= 3; ++i){
+        if (token == NULL)
+            break;
+        if (i == 0)
+            message->type = (Type)atoi(token);
+        else if (i == 1)
+            message->size = atoi(token);
+        else if (i == 2)
+            strcpy((char *)message->source, token);
+        else if (i == 3)
+            strcpy((char *)message->data, token);
+        token = strtok(NULL, ":");
+    }
 }
 
 int main(int argc, char * argv[]){
@@ -112,11 +129,19 @@ int main(int argc, char * argv[]){
         exit(1);
     }
 
-    buf[strlen("registration_successful")] = '\0'; // safety
-    if (!strcmp(buf, "registration_successful")){ // buf == "registration_successful"
-        printf("Registered Successfully.\n"); //LO_ACK 
-    } else {
-        printf("%s\n", buf); // LO_NAK
+    if (read(deliver_socket, buf, MAX_LINE) < 0){
+        perror("read");
+        close(deliver_socket);
+        exit(1);
+    }
+
+    Message* message_received = malloc(sizeof(Message));
+    get_message_from_string(buf, message_received);
+
+    if (message_received->type == LO_ACK){ // login successful
+        printf("Registered Successfully.\n"); 
+    } else if (message_received->type == LO_NAK){ // login not successful
+        printf("Login was not Successful");
         close(deliver_socket);
         exit(0);
     }

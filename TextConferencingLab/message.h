@@ -5,6 +5,7 @@ typedef struct hostent hostent;
 typedef struct stat file_stat;
 
 // Types
+#define INVALID 0
 #define LOGIN 1
 #define LO_ACK 2
 #define LO_NAK 3
@@ -19,6 +20,7 @@ typedef struct stat file_stat;
 #define QUERY 12
 #define QU_ACK 13
 
+#define MAX_LINE 256
 #define MAX_NAME 20
 #define MAX_DATA 100
 #define MAX_PASSWORD 30

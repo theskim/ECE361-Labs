@@ -15,11 +15,12 @@
 long check_login_args_return_port(char* command, char* ID, char* password, hostent* hp, char* port_passed){
     char* str_end;
 
-    if (!hp){
+    if (!hp){ // checking if host is known
         perror("unknown host");
         exit(1);
     }
 
+    // check if user inputted wrong args
     if (strcmp(command, "/login") ||
         !strlen(ID) ||
         !strlen(password) ||
@@ -28,6 +29,7 @@ long check_login_args_return_port(char* command, char* ID, char* password, hoste
         exit(1);
     }
 
+    // check if port is an integer
     long port = strtol(port_passed, &str_end, 10);
     if (errno == ERANGE || str_end == port_passed || *str_end != '\0'){
         perror("invalid port");
@@ -35,6 +37,21 @@ long check_login_args_return_port(char* command, char* ID, char* password, hoste
     }
 
     return port;
+}
+
+char* get_string_from_message(Message message){
+    // Format: type:size:source:data 
+    char* message_string = malloc(MAX_LINE);
+    strcpy(message_string, "");
+    sprintf(message_string + strlen(message_string), "%d", (int)message.type);
+    strcat(message_string, ":");
+    sprintf(message_string + strlen(message_string), "%d", message.size);
+    strcat(message_string, ":");
+    sprintf(message_string + strlen(message_string), "%s", message.source);
+    strcat(message_string, ":");
+    sprintf(message_string + strlen(message_string), "%s", message.data);
+    
+    return message_string;
 }
 
 int main(int argc, char * argv[]){
@@ -63,11 +80,11 @@ int main(int argc, char * argv[]){
     hp = gethostbyname(IP);
 
     bzero(&sin, sizeof(sin));
-    sin.sin_family = AF_INET;
-    if (hp)
-        bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
-    
+    sin.sin_family = AF_INET; // IPv4
+
+    if (hp) bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
     long port = check_login_args_return_port(command, ID, password, hp, port_passed);
+    
     sin.sin_port = htons(port); // Convert values between host and network byte order
 
     if ((deliver_socket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
@@ -75,18 +92,21 @@ int main(int argc, char * argv[]){
         exit(1);
     }
 
-    char register_request[MAX_LINE];
-    strcat(register_request,ID);
-    strcat(register_request,":");
-    strcat(register_request,password);
-
     if (connect(deliver_socket, (sockaddr*)&sin, sizeof(sin)) < 0){
         perror("connect");
         close(deliver_socket);
         exit(1);
     }
 
-    if (write(deliver_socket, register_request, strlen(register_request)) < 0){
+    Message message;
+    message.type = LOGIN;
+    message.size = strlen(password);
+    strcpy((char *)message.source, (char *)ID);
+    strcpy((char *)message.data, (char *)password);
+    char* login_packet = get_string_from_message(message);
+    printf("%s\n", login_packet);
+
+    if (write(deliver_socket, login_packet, strlen(login_packet)) < 0){
         perror("write");
         close(deliver_socket);
         exit(1);

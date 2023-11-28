@@ -83,14 +83,38 @@ int remove_client(unsigned char IP[])
     return 1;
 }
 
+void get_message_from_string(char* string_received, Message* message){
+    char* token = strtok(string_received, ":");
+
+    // Format: type:size:source:data 
+    for (int i = 0; i <= 3; ++i){
+        if (i == 0)
+            message->type = (Type)atoi(token);
+        else if (i == 1)
+            message->size = atoi(token);
+        else if (i == 2)
+            strcpy((char *)message->source, token);
+        else if (i == 3)
+            strcpy((char *)message->data, token);
+        token = strtok(NULL, ":");
+    }
+}
+
 void* client_receiver(void* socket_desc){
     int client_socket = *(int*)socket_desc;
-    char buf[MAX_DATA];
+    char string_received[MAX_DATA];
     int read_size;
 
-    while ((read_size = read(client_socket, buf, MAX_DATA)) > 0){
-        buf[read_size] = '\0';
-        printf("%s\n", buf);
+    while ((read_size = read(client_socket, string_received, MAX_DATA)) > 0){
+        string_received[read_size] = '\0';
+        printf("%s\n", string_received);
+
+        Message* message = malloc(sizeof(Message));
+        get_message_from_string(string_received, message);
+        printf("Message type: %d\n", message->type);
+        printf("Message size: %d\n", message->size);
+        printf("Message source: %s\n", message->source);
+        printf("Message data: %s\n", message->data);
     }
 
     return 0;
@@ -111,7 +135,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("socket");
         close(server_socket);
         exit(1);
@@ -153,6 +177,7 @@ int main(int argc, char *argv[]){
         new_socket = malloc(1);
         *new_socket = client_socket;
 
+        // Create a new thread and join it afterwards
         if (pthread_create(&new_thread, NULL, client_receiver, (void*)new_socket) < 0) {
             perror("pthread_create");
             exit(1);

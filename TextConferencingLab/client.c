@@ -196,6 +196,8 @@ int main(int argc, char * argv[]){
                 printf("Too many arguments.\n");
                 continue;
             } 
+
+            // filling message_sent
             message_sent->type = QUERY;
             message_sent->size = strlen("q");
             strcpy((char *)message_sent->source, (char *)ID);
@@ -213,18 +215,18 @@ int main(int argc, char * argv[]){
             continue;
         }
 
-        if ((deliver_socket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+        if ((deliver_socket = socket(PF_INET, SOCK_STREAM, 0)) < 0){ // create socket
             perror("socket");
             exit(1);
         }
 
-        if (connect(deliver_socket, (sockaddr *)&sin, sizeof(sin)) < 0){
+        if (connect(deliver_socket, (sockaddr *)&sin, sizeof(sin)) < 0){ // connect to server
             perror("connect");
             close(deliver_socket);
             exit(1);
         }
 
-        char* message_string = get_string_from_message(*message_sent);
+        char* message_string = get_string_from_message(*message_sent); // get message string from message
         if (write(deliver_socket, message_string, strlen(message_string)) < 0){
             perror("write");
             close(deliver_socket);
@@ -244,7 +246,7 @@ int main(int argc, char * argv[]){
         message_received = malloc(sizeof(Message));
         get_message_from_string(buf, message_received);
         if (!strcmp(new_command, "/list")){ // list session
-            // received message is like: ID|session_ID|ID|session_ID, passing:
+            // received message is like: ID|session_ID|ID|session_ID...
             // printing id and session id per line
             printf("List of Users and Associated Sessions:\n");
             char* token = strtok((char *)message_received->data, "|");

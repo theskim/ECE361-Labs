@@ -19,6 +19,7 @@ unsigned char IDs[][MAX_NAME] = {"Steve", "Jill", "Grace", "Joe"};
 unsigned char passwords[][MAX_PASSWORD] = {"Steve1", "Jill2", "Grace3", "Joe4"};
 
 Client* head = NULL;
+Session* session_head = NULL;
 
 void print_clients(){
     Client* iterator = head;
@@ -175,7 +176,28 @@ void* client_receiver(void* args){
         // TODO
     }
     else if (message->type == QUERY){
+        Message* new_message = malloc(sizeof(Message));
+        
+        new_message->type = QU_ACK; // always ACK for query
+        strcpy((char *)new_message->source, "server");
 
+        Client* iterator = head;
+        while (iterator != NULL){ // format: ID|session_ID|ID|session_ID....
+            sprintf((char *)new_message->data + strlen((char *)new_message->data), "%s", iterator->ID);
+            strcat((char *)new_message->data, "|");
+            sprintf((char *)new_message->data + strlen((char *)new_message->data), "%d", iterator->session_ID);
+            strcat((char *)new_message->data, "|");
+            iterator = iterator->next;
+        }
+        new_message->size = strlen((char *)new_message->data);
+        print_message(*new_message);
+        char* message_string = get_string_from_message(*new_message);
+        free(new_message);
+        printf("%s\n", message_string);
+        if (write(client_socket, message_string, strlen(message_string)) < 0){
+            perror("write");
+            exit(1);
+        }
     }
 
     print_clients();

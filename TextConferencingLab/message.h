@@ -48,6 +48,12 @@ typedef struct client {
     struct client *next;
 } Client;
 
+typedef struct session {
+    unsigned char ID[MAX_NAME];
+    unsigned char password[MAX_PASSWORD];
+    struct session *next;
+} Session;
+
 typedef struct {
     int socket;
     char* ip;

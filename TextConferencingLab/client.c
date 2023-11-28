@@ -233,7 +233,8 @@ int main(int argc, char * argv[]){
 
         if (message_sent->type == EXIT) // only exit if user types /quit
             break;
-
+        
+        clear_buffer(buf); // clear buffer
         if (read(deliver_socket, buf, MAX_LINE) < 0){
             perror("read");
             close(deliver_socket);
@@ -242,6 +243,23 @@ int main(int argc, char * argv[]){
 
         message_received = malloc(sizeof(Message));
         get_message_from_string(buf, message_received);
+        if (!strcmp(new_command, "/list")){ // list session
+            // received message is like: ID|session_ID|ID|session_ID, passing:
+            // printing id and session id per line
+            printf("List of Users and Associated Sessions:\n");
+            char* token = strtok((char *)message_received->data, "|");
+            while (token != NULL){
+                printf("---------------------------\n");
+                printf("ID: %s, ", token);
+                token = strtok(NULL, "|");
+                if (!strcmp(token, "-1"))
+                    printf("No Session\n");
+                else
+                    printf("Session ID: %s\n", token);
+                token = strtok(NULL, "|");
+                printf("---------------------------\n");
+            }
+        } 
     }
 
     free(message_sent);

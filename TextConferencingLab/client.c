@@ -218,7 +218,6 @@ int main(int argc, char * argv[]){
         }
         else {
             printf("\nInvalid command, Please try it again...\n");
-            printf("bruh : %s %s \n\n", new_command, optional_second_arg);
             continue;
         }
 

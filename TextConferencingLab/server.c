@@ -175,17 +175,27 @@ void* client_receiver(void* args){
     else if (message->type == EXIT) // exit
         remove_client(message->source);
     else if (message->type == JOIN){ // join
-        // TODO
+        Message* new_message = malloc(sizeof(Message));
+
+        // TODO (check if session exists, if doesn't send NAK)
+        bool session_exist = true; // modify this
+        if (session_exist){
+            new_message->type = JN_ACK; 
+        } else {
+            new_message->type = JN_NAK;
+        }
     }
     else if (message->type == LEAVE_SESS){ // leave
-        
-        // TODO
+        // TODO (remove client from session)
     }
     else if (message->type == NEW_SESS){ // new
-        // TODO
+        Message* new_message = malloc(sizeof(Message));
+        
+        new_message->type = NS_ACK; // always ACK for new session
+        // TODO: create a new session (possibly in a list)
     }
     else if (message->type == MESSAGE){ // message
-        // TODO
+        // TODO: need to send message to all clients in session
     }
     else if (message->type == QUERY){ // query (list)
         Message* new_message = malloc(sizeof(Message));

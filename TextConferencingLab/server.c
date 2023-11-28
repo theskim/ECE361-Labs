@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <pthread.h>
 #include "message.h"
 
 // hard-coded users:
@@ -82,6 +83,19 @@ int remove_client(unsigned char IP[])
     return 1;
 }
 
+void* client_receiver(void* socket_desc){
+    int client_socket = *(int*)socket_desc;
+    char buf[MAX_DATA];
+    int read_size;
+
+    while ((read_size = read(client_socket, buf, MAX_DATA)) > 0){
+        buf[read_size] = '\0';
+        printf("%s\n", buf);
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[]){
     sockaddr_in sin;
     socklen_t addr_len = sizeof(sin);
@@ -130,22 +144,23 @@ int main(int argc, char *argv[]){
     sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
 
-    int client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
-    if (client_socket < 0) {
-        perror("accept");
-        close(server_socket);
-        exit(1);
-    }
-    
-    if (read(client_socket, buf, MAX_DATA) < 0){
-        perror("read");
-        close(server_socket);
-        exit(1);
+    int client_socket;
+    int* new_socket;
+    while ((client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len))) {
+        printf("Connection accepted\n");
+
+        pthread_t new_thread;
+        new_socket = malloc(1);
+        *new_socket = client_socket;
+
+        if (pthread_create(&new_thread, NULL, client_receiver, (void*)new_socket) < 0) {
+            perror("pthread_create");
+            exit(1);
+        }
+
+        printf("Assigned Thread\n");
+        pthread_join(new_thread, NULL);
     }
 
-    //buf[strlen("ftp")] = '\0'; // safety
-    if (!strcmp(buf, "ftp")) // reply with yes
-        sendto(server_socket, "yes", strlen("yes"), 0, (sockaddr*) &sin, sizeof(sin));
-    else // reply with no
-        sendto(server_socket, "no", strlen("no"), 0, (sockaddr*) &sin, sizeof(sin));
+    return 0;
 }

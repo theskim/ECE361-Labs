@@ -28,9 +28,8 @@ void print_message(Message message){
 }
 
 // Given a message, convert it to a string (NOTE THAT THIS FUNCTION USES MALLOC, USER MUST FREE THE RETURNED STRING)
-char* get_string_from_message(Message message){
+void get_string_from_message(char* message_string, Message message){
     // Format: type:size:source:data 
-    char* message_string = malloc(MAX_LINE);
     strcpy(message_string, "");
     sprintf(message_string + strlen(message_string), "%d", (int)message.type);
     strcat(message_string, ":");
@@ -39,8 +38,6 @@ char* get_string_from_message(Message message){
     sprintf(message_string + strlen(message_string), "%s", message.source);
     strcat(message_string, ":");
     sprintf(message_string + strlen(message_string), "%s", message.data);
-    
-    return message_string;
 }
 
 // Given a string, convert it to a message (message is passed by reference)

@@ -100,15 +100,14 @@ int main(int argc, char * argv[]){
         message_sent->size = strlen(password);
         strcpy((char *)message_sent->source, (char *)ID);
         strcpy((char *)message_sent->data, (char *)password);
-        char* message_string = get_string_from_message(*message_sent);
+        char message_string[MAX_LINE];
+        get_string_from_message(message_string, *message_sent);
 
         if (write(deliver_socket, message_string, strlen(message_string)) < 0){
-            smart_free((void** )&message_sent); // free the memory to avoid memory leak
             perror("write");
             close(deliver_socket);
             exit(1);
         }
-        smart_free((void** )&message_sent); // free the memory to avoid memory leak
 
         if (read(deliver_socket, buf, MAX_LINE) < 0){
             perror("read");
@@ -234,14 +233,13 @@ int main(int argc, char * argv[]){
             exit(1);
         }
 
-        char* message_string = get_string_from_message(*message_sent); // get message string from message
+        char message_string[MAX_LINE];
+        get_string_from_message(message_string, *message_sent); // get message string from message
         if (write(deliver_socket, message_string, strlen(message_string)) < 0){
-            smart_free((void**)&message_sent); // free the memory to avoid memory leak
             perror("write");
             close(deliver_socket);
             exit(1);
         }
-        smart_free((void** )&message_sent); // free the memory to avoid memory leak
 
         if (message_sent->type == EXIT) // only exit if user types /quit
             break;

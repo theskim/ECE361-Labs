@@ -65,4 +65,4 @@ echo "\nTesting memory bugs"
      echo "/list"
      sleep 1
      echo "/logout"
-} | sudo valgrind --leak-check=full ./client
+} | sudo valgrind  --leak-check=full --show-leak-kinds=all ./client

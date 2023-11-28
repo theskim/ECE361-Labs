@@ -35,7 +35,7 @@ void print_clients(){
 }
 
 // Helper function to register a client into a linked list
-int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, unsigned char* password){
+int register_client(unsigned char* ID, char* IP, unsigned int port, unsigned char* password){
     // int flag = 0;
     // for (int i = 0; i < 4; i++)
     //     if (!strcmp((char *)IDs[i], (char *)ID) && !strcmp((char *)passwords[i], (char *)password))
@@ -68,6 +68,7 @@ int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, uns
         traverser = traverser->next;
     
     if (!strcmp((char *)traverser->ID, (char *)ID)){
+        free(newNode);
         printf("User already registered\n");
         return -1;
     }
@@ -78,7 +79,7 @@ int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, uns
  
 // Helper function to remove a client from a linked list given their ID
 int remove_client(unsigned char* ID){
-    printf("Removing client ID = %s \n", ID);
+    printf("Removing client ID: %s \n", ID);
     if (head != NULL){
         if (head->next == NULL && !strcmp((char *)head->ID, (char *)ID)){
             smart_free((void**)&head); // free the memory to avoid memory leak
@@ -108,7 +109,7 @@ int remove_client(unsigned char* ID){
         traverser = traverser->next;
     }
     if (strcmp((char *)traverser->ID,(char *)ID)){
-        printf("ID not found\n");
+        printf("ID %s not found\n", ID);
         return -1;
     }
     
@@ -165,8 +166,10 @@ void* client_receiver(void* args){
             strcpy((char *)new_message.data, "Successful");
         }
 
-        char* message_string = get_string_from_message(new_message);
+        char message_string[MAX_LINE];
+        get_string_from_message(message_string, new_message);
         if (write(client_socket, message_string, strlen(message_string)) < 0){
+            smart_free((void**)&message); 
             perror("write");
             exit(1);
         }
@@ -212,16 +215,19 @@ void* client_receiver(void* args){
         }
         new_message->size = strlen((char *)new_message->data);
         print_message(*new_message);
-        char* message_string = get_string_from_message(*new_message);
-        smart_free((void** )&new_message); // free the memory to avoid memory leak
+        char message_string[MAX_LINE];
+        get_string_from_message(message_string, *new_message);
+        smart_free((void**)&new_message); // free the memory to avoid memory leak
         
-        printf("%s\n", message_string);
+        //printf("%s\n", message_string);
         if (write(client_socket, message_string, strlen(message_string)) < 0){
+            smart_free((void**)&message); 
             perror("write");
             exit(1);
         }
     }
 
+    smart_free((void**)&message); 
     print_clients();
 
     return 0;
@@ -298,6 +304,7 @@ int main(int argc, char *argv[]){
         
         // Create a new thread and join it afterwards
         if (pthread_create(&new_thread, NULL, client_receiver, (void*)args) < 0){
+            free(args);
             perror("pthread_create");
             exit(1);
         }
@@ -307,6 +314,6 @@ int main(int argc, char *argv[]){
     
     printf("Closing server socket...\n");
     close(server_socket); 
-
+    
     return 0;
 }

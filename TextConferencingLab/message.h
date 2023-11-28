@@ -1,3 +1,6 @@
+#ifndef MESSAGE_H
+#define MESSAGE_H
+
 typedef unsigned int Type;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr sockaddr;
@@ -40,3 +43,5 @@ typedef struct client {
     unsigned char ID[MAX_NAME];
     struct client *next;
 } Client;
+
+#endif

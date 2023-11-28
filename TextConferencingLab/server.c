@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include "message.h"
+#include "helper.h"
 
 // hard-coded users:
 unsigned char IDs[][MAX_NAME] = {"Steve", "Jill", "Grace", "Joe"};
@@ -83,69 +84,21 @@ int remove_client(unsigned char IP[])
     return 1;
 }
 
-char* get_string_from_message(Message message){
-    // Format: type:size:source:data 
-    char* message_string = malloc(MAX_LINE);
-    strcpy(message_string, "");
-    sprintf(message_string + strlen(message_string), "%d", (int)message.type);
-    strcat(message_string, ":");
-    sprintf(message_string + strlen(message_string), "%d", message.size);
-    strcat(message_string, ":");
-    sprintf(message_string + strlen(message_string), "%s", message.source);
-    strcat(message_string, ":");
-    sprintf(message_string + strlen(message_string), "%s", message.data);
-    
-    return message_string;
-}
-
-
-void get_message_from_string(char* string_received, Message* message){
-    char* token = strtok(string_received, ":");
-
-    // Format: type:size:source:data -> seperate it by : and store it in message
-    for (int i = 0; i <= 3; ++i){
-        if (token == NULL){ // if token is null, something is wrong
-            if (i == 0)
-                message->type = INVALID;
-            else if (i == 1)
-                message->size = INVALID;
-            else if (i == 2)
-                strcpy((char *)message->source, token);
-            else if (i == 3)
-                strcpy((char *)message->data, token);
-        }
-        else {
-            if (i == 0)
-                message->type = (Type)atoi(token);
-            else if (i == 1)
-                message->size = atoi(token);
-            else if (i == 2)
-                strcpy((char *)message->source, token);
-            else if (i == 3)
-                strcpy((char *)message->data, token);
-        }
-        token = strtok(NULL, ":");
-    }
-}
-
 void* client_receiver(void* socket_desc){
     int client_socket = *(int*)socket_desc;
+    free(socket_desc);
     char string_received[MAX_DATA];
     int read_size;
 
     // Read from client
     while ((read_size = read(client_socket, string_received, MAX_DATA)) > 0){
-        string_received[read_size] = '\0';
+        string_received[read_size] = '\0'; // safety in case 
         printf("%s\n", string_received);
 
         Message* message = malloc(sizeof(Message));
         *message = (Message){0, 0, "", ""}; // empty message
-
-        get_message_from_string(string_received, message);
-        printf("Message type: %d\n", message->type);
-        printf("Message size: %d\n", message->size);
-        printf("Message source: %s\n", message->source);
-        printf("Message data: %s\n", message->data);
+        get_message_from_string(string_received, message); // get message from string
+        print_message(*message); // print message
 
         // if valid, send ACK
         if (message->type == LOGIN){

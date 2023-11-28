@@ -9,6 +9,7 @@
 #include <unistd.h> 
 #include <errno.h>
 #include "message.h"
+#include "helper.h"
 
 long check_login_args_return_port(char* command, char* ID, char* password, hostent* hp, char* port_passed){
     char* str_end;
@@ -35,40 +36,6 @@ long check_login_args_return_port(char* command, char* ID, char* password, hoste
     }
 
     return port;
-}
-
-char* get_string_from_message(Message message){
-    // Format: type:size:source:data 
-    char* message_string = malloc(MAX_LINE);
-    strcpy(message_string, "");
-    sprintf(message_string + strlen(message_string), "%d", (int)message.type);
-    strcat(message_string, ":");
-    sprintf(message_string + strlen(message_string), "%d", message.size);
-    strcat(message_string, ":");
-    sprintf(message_string + strlen(message_string), "%s", message.source);
-    strcat(message_string, ":");
-    sprintf(message_string + strlen(message_string), "%s", message.data);
-    
-    return message_string;
-}
-
-void get_message_from_string(char* string_received, Message* message){
-    char* token = strtok(string_received, ":");
-
-    // Format: type:size:source:data -> seperate it by : and store it in message
-    for (int i = 0; i <= 3; ++i){
-        if (token == NULL)
-            break;
-        if (i == 0)
-            message->type = (Type)atoi(token);
-        else if (i == 1)
-            message->size = atoi(token);
-        else if (i == 2)
-            strcpy((char *)message->source, token);
-        else if (i == 3)
-            strcpy((char *)message->data, token);
-        token = strtok(NULL, ":");
-    }
 }
 
 int main(int argc, char * argv[]){
@@ -121,7 +88,6 @@ int main(int argc, char * argv[]){
     strcpy((char *)message.source, (char *)ID);
     strcpy((char *)message.data, (char *)password);
     char* login_packet = get_string_from_message(message);
-    printf("%s\n", login_packet);
 
     if (write(deliver_socket, login_packet, strlen(login_packet)) < 0){
         perror("write");
@@ -137,6 +103,7 @@ int main(int argc, char * argv[]){
 
     Message* message_received = malloc(sizeof(Message));
     get_message_from_string(buf, message_received);
+    print_message(*message_received); // print message
 
     if (message_received->type == LO_ACK){ // login successful
         printf("Registered Successfully.\n"); 

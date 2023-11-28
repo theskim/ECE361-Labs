@@ -21,18 +21,20 @@ unsigned char passwords[][MAX_PASSWORD] = {"Steve1", "Jill2", "Grace3", "Joe4"};
 Client* head = NULL;
 Session* session_head = NULL;
 
+// Helper function to print all clients for debugging purposes (traversing linked list)
 void print_clients(){
     Client* iterator = head;
-    printf("Current Clients: \n");
+    printf("Current Clients:\n");
     int i = 0;
     while (iterator != NULL){
-        printf("Client %d: ID of %s, IP of %s, Port of %d, Session ID of %d\n", i, iterator->ID, iterator->IP, iterator->port, iterator->session_ID);
+        printf("\tClient %d: ID of %s, IP of %s, Port of %d, Session ID of %d\n", i, iterator->ID, iterator->IP, iterator->port, iterator->session_ID);
         iterator = iterator->next;
         ++i;
     }
     printf("\n");
 }
 
+// Helper function to register a client into a linked list
 int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, unsigned char* password){
     // int flag = 0;
     // for (int i = 0; i < 4; i++)
@@ -45,6 +47,8 @@ int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, uns
     // }
     printf("Registering client ID = %s \n", ID);
     print_clients();
+
+    // Essentially inserting a value into a linked list 
 
     Client* newNode = malloc(sizeof(Client));
     newNode->session_ID = -1;
@@ -71,7 +75,8 @@ int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, uns
     traverser->next = newNode;
     return 1;
 }
-
+ 
+// Helper function to remove a client from a linked list given their ID
 int remove_client(unsigned char* ID){
     printf("Removing client ID = %s \n", ID);
     if (head != NULL){
@@ -114,10 +119,11 @@ int remove_client(unsigned char* ID){
     return 1;
 }
 
+// Thread function to handle client requests
 void* client_receiver(void* args){
     thread_args arguments = *(thread_args*)args;
     int client_socket = arguments.socket;
-    char* client_IP = arguments.ip;
+    char* client_IP = arguments.IP;
     int client_port = arguments.port;
     free(args);
 
@@ -167,23 +173,22 @@ void* client_receiver(void* args){
             exit(1);
         }
     } 
-    else if (message->type == EXIT){
+    else if (message->type == EXIT) // exit
         remove_client(message->source);
-    }
-    else if (message->type == JOIN){
+    else if (message->type == JOIN){ // join
         // TODO
     }
-    else if (message->type == LEAVE_SESS){
+    else if (message->type == LEAVE_SESS){ // leave
         
         // TODO
     }
-    else if (message->type == NEW_SESS){
+    else if (message->type == NEW_SESS){ // new
         // TODO
     }
-    else if (message->type == MESSAGE){
+    else if (message->type == MESSAGE){ // message
         // TODO
     }
-    else if (message->type == QUERY){
+    else if (message->type == QUERY){ // query (list)
         Message* new_message = malloc(sizeof(Message));
         
         new_message->type = QU_ACK; // always ACK for query
@@ -223,11 +228,13 @@ int main(int argc, char *argv[]){
     //use me!
     //https://www.geeksforgeeks.org/socket-programming-in-cc-handling-multiple-clients-on-server-without-multi-threading/
 
+    // ./server <port>
     if (argc != 2){
         perror("Should have two arguments");
         exit(1);
     }
 
+    // Create a socket
     if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("socket");
         close(server_socket);
@@ -260,7 +267,7 @@ int main(int argc, char *argv[]){
 
     int client_socket;
     int* new_socket;
-    while (true){
+    while (true){ // accept connections continuously
         sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
 
@@ -270,15 +277,14 @@ int main(int argc, char *argv[]){
             exit(1);
         }
 
-        char* client_IP = inet_ntoa(client_addr.sin_addr);
-        int client_port = ntohs(client_addr.sin_port);
-        printf("Connection accepted: client addr = %s:%d\n", client_IP, client_port);
+        char* client_IP = inet_ntoa(client_addr.sin_addr); // convert IP to string
+        int client_port = ntohs(client_addr.sin_port); // convert port to int
+        printf("Connection Accepted from %s:%d\n", client_IP, client_port); // print client info
 
-        Thread new_thread;
-        
-        thread_args* args = malloc(sizeof(thread_args)); // allocate memory for thread args
+        pthread_t new_thread;
+        thread_args* args = malloc(sizeof(thread_args)); // allocate memory for thread args (to access them from thread)
         args->socket = client_socket;
-        args->ip = client_IP;
+        args->IP = client_IP;
         args->port = client_port;
         
         // Create a new thread and join it afterwards
@@ -287,11 +293,11 @@ int main(int argc, char *argv[]){
             exit(1);
         }
 
-        pthread_join(new_thread, NULL);
+        pthread_join(new_thread, NULL); // join this thread to receive client req
     }
     
     printf("Closing server socket...\n");
-    close(server_socket);
+    close(server_socket); 
 
     return 0;
 }

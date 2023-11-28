@@ -1,14 +1,12 @@
 
 #ifndef MESSAGE_H
 #define MESSAGE_H
-#include <bits/pthreadtypes.h>
 
 typedef unsigned int Type;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr sockaddr;
 typedef struct hostent hostent;
 typedef struct stat file_stat;
-typedef pthread_t Thread;
 
 // Types
 #define INVALID 0
@@ -40,7 +38,7 @@ typedef struct message {
 } Message;
 
 typedef struct client {
-    unsigned char IP[MAX_DATA];
+    char IP[MAX_DATA];
     unsigned int port; 
     unsigned int session_ID;
     unsigned char ID[MAX_NAME];
@@ -56,7 +54,7 @@ typedef struct session {
 
 typedef struct {
     int socket;
-    char* ip;
+    char* IP; // since we access memory from thread and free it right away, no need for static size
     int port;
 } thread_args;
 

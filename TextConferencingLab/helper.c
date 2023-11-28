@@ -4,11 +4,13 @@
 #include <errno.h>
 #include "message.h"
 
+// Helper function to clear a given char* buffer
 void clear_buffer(char* buf){
     for (int i = 0; i < MAX_LINE; ++i)
         buf[i] = '\0';
 }
 
+// Helper function to display a message for debugging purposes
 void print_message(Message message){
     printf("Type: %d\n", message.type);
     printf("Size: %d\n", message.size);
@@ -16,6 +18,7 @@ void print_message(Message message){
     printf("Data: %s\n", message.data);
 }
 
+// Given a message, convert it to a string
 char* get_string_from_message(Message message){
     // Format: type:size:source:data 
     char* message_string = malloc(MAX_LINE);
@@ -31,32 +34,32 @@ char* get_string_from_message(Message message){
     return message_string;
 }
 
-
+// Given a string, convert it to a message (message is passed by reference)
 void get_message_from_string(char* string_received, Message* message){
-    char* token = strtok(string_received, ":");
+    char* splitted_val = strtok(string_received, ":");
 
     // Format: type:size:source:data -> seperate it by : and store it in message
     for (int i = 0; i <= 3; ++i){
-        if (token == NULL){ // if token is null, something is wrong
+        if (splitted_val == NULL){ // if token is null, something is wrong
             if (i == 0)
                 message->type = INVALID;
             else if (i == 1)
                 message->size = INVALID;
             else if (i == 2)
-                strcpy((char *)message->source, token);
+                strcpy((char *)message->source, splitted_val);
             else if (i == 3)
-                strcpy((char *)message->data, token);
+                strcpy((char *)message->data, splitted_val);
         }
         else {
             if (i == 0)
-                message->type = (Type)atoi(token);
+                message->type = (Type)atoi(splitted_val);
             else if (i == 1)
-                message->size = atoi(token);
+                message->size = atoi(splitted_val);
             else if (i == 2)
-                strcpy((char *)message->source, token);
+                strcpy((char *)message->source, splitted_val);
             else if (i == 3)
-                strcpy((char *)message->data, token);
+                strcpy((char *)message->data, splitted_val);
         }
-        token = strtok(NULL, ":");
+        splitted_val = strtok(NULL, ":");
     }
 }

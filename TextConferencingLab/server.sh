@@ -1,3 +1,4 @@
 # chmod +x server client server.sh client.sh
 make
-./server 3000
+clear
+sudo ./server 3002

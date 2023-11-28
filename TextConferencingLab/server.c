@@ -17,33 +17,49 @@
 unsigned char IDs[][MAX_NAME] = {"Steve", "Jill", "Grace", "Joe"};
 unsigned char passwords[][MAX_PASSWORD] = {"Steve1", "Jill2", "Grace3", "Joe4"};
 
-Client *head = NULL;
+Client* head = NULL;
 
-int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, unsigned char password[]){
-    int flag = 0;
-
-    for (int i = 0; i < 4; i++)
-        if (!strcmp((char *)IDs[i], (char *)ID) && !strcmp((char *)passwords[i], (char *)password))
-            flag = 1;
-
-    if (!flag){
-        printf("Invalid credentials");
-        return -1;
+void print_clients(){
+    Client* iterator = head;
+    printf("Current Clients: \n");
+    while (iterator != NULL){
+        printf("Client 1: ID of %s, IP of %s, Port of %d, Session ID of %d\n", iterator->ID, iterator->IP, iterator->port, iterator->session_ID);
+        iterator = iterator->next;
     }
-    
-    Client *newNode = malloc(sizeof(Client));
+    printf("\n");
+}
+
+int register_client(unsigned char* ID, unsigned char* IP, unsigned int port, unsigned char password[]){
+    // int flag = 0;
+    // for (int i = 0; i < 4; i++)
+    //     if (!strcmp((char *)IDs[i], (char *)ID) && !strcmp((char *)passwords[i], (char *)password))
+    //         flag = 1;
+
+    // if (!flag){
+    //     printf("Invalid credentials");
+    //     return -1;
+    // }
+    printf("Registering client ID = %s \n", ID);
+    print_clients();
+
+    Client* newNode = malloc(sizeof(Client));
     newNode->session_ID = -1;
     strcpy((char *)newNode->ID, (char *)ID);
     strcpy((char *)newNode->IP, (char *)IP);
     newNode->port = port;
     newNode->next = NULL;
 
-    Client *traverser = head;
-    while (traverser->next!=NULL && strcmp((char *)traverser->ID,(char *)ID))
+    if (head == NULL){
+        head = newNode;
+        return 1;
+    }
+
+    Client* traverser = head;
+    while (traverser->next != NULL && strcmp((char *)traverser->ID,(char *)ID))
         traverser = traverser->next;
     
     if (!strcmp((char *)traverser->ID, (char *)ID)){
-        printf("User already registered");
+        printf("User already registered\n");
         return -1;
     }
     
@@ -51,42 +67,48 @@ int register_client(unsigned char ID[], unsigned char IP[], unsigned int port, u
     return 1;
 }
 
-int remove_client(unsigned char IP[])
-{
+int remove_client(unsigned char* ID){
+    printf("Removing client ID = %s \n", ID);
     if (head != NULL){
-        if (head->next == NULL && !strcmp((char *)head->IP, (char *)IP)){
+        if (head->next == NULL && !strcmp((char *)head->ID, (char *)ID)){
+            free(head);
             head = NULL;
             return 1;
         }
-        if (head->next == NULL && strcmp((char *)head->IP, (char *)IP)){
-            printf("ID not found");
+        if (head->next == NULL && strcmp((char *)head->ID, (char *)ID)){
+            printf("ID %s not found\n", ID);
             return -1;
         }
     } else {
-        printf("List already empty");
+        printf("List already empty\n");
         return -1; 
     }
     
     Client *traverser = head->next;
     Client *prev_node = head;
 
-    while(traverser->next != NULL && strcmp((char *)traverser->IP, (char *)IP)){
+    while (traverser->next != NULL && strcmp((char *)traverser->ID, (char *)ID)){
         prev_node = prev_node->next;
         traverser = traverser->next;
     }
-
-    if (strcmp((char *)traverser->IP,(char *)IP)){
+    if (strcmp((char *)traverser->IP,(char *)ID)){
         printf("ID not found");
         return -1;
     }
-
+    
     prev_node->next = traverser->next;
+    free(traverser);
+
     return 1;
 }
 
-void* client_receiver(void* socket_desc){
-    int client_socket = *(int*)socket_desc;
-    free(socket_desc);
+void* client_receiver(void* args){
+    thread_args arguments = *(thread_args*)args;
+    int client_socket = arguments.socket;
+    unsigned char* client_IP = arguments.ip;
+    int client_port = arguments.port;
+    free(args);
+
     char string_received[MAX_DATA];
     int read_size;
 
@@ -128,6 +150,10 @@ void* client_receiver(void* socket_desc){
                 new_message.size = strlen("successful");
                 strcpy((char *)new_message.source, "server");
                 strcpy((char *)new_message.data, "successful");
+
+                while (!register_client(message->source, client_IP, client_port, message->data)){
+                    printf("Failed to register client id %s\n", message->source);
+                }
             }
 
             char* message_string = get_string_from_message(new_message);
@@ -135,13 +161,20 @@ void* client_receiver(void* socket_desc){
                 perror("write");
                 exit(1);
             }
+        } 
+
+        else if (message->type == EXIT){
+            remove_client(message->source);
         }
+
+        print_clients();
     }
 
     return 0;
 }
 
 int main(int argc, char *argv[]){
+    head = NULL;
     sockaddr_in sin;
     socklen_t addr_len = sizeof(sin);
     int server_socket;
@@ -197,11 +230,13 @@ int main(int argc, char *argv[]){
         printf("Connection accepted: client addr = %s:%d\n", client_IP, client_port);
 
         Thread new_thread;
-        new_socket = malloc(1);
-        *new_socket = client_socket;
-
+        thread_args* args = malloc(sizeof(thread_args)); // allocate memory for thread args
+        args->socket = client_socket;
+        args->ip = client_IP;
+        args->port = client_port;
+        
         // Create a new thread and join it afterwards
-        if (pthread_create(&new_thread, NULL, client_receiver, (void*)new_socket) < 0){
+        if (pthread_create(&new_thread, NULL, client_receiver, (void*)args) < 0){
             perror("pthread_create");
             exit(1);
         }
@@ -209,6 +244,9 @@ int main(int argc, char *argv[]){
         printf("Assigned Thread\n");
         pthread_join(new_thread, NULL);
     }
+    
+    printf("Closing server socket...\n");
+    close(server_socket);
 
     return 0;
 }

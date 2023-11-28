@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h> 
 #include <errno.h>
+#include <stdbool.h>
 #include "message.h"
 #include "helper.h"
 
@@ -22,7 +23,7 @@ long check_login_args_return_port(char* command, char* ID, char* password, char*
         perror("first command is not /login");
         exit(1);
     }
-
+    
     // check if port is an integer
     long port = strtol(port_passed, &str_end, 10);
     if (errno == ERANGE || str_end == port_passed || *str_end != '\0'){
@@ -76,23 +77,32 @@ int main(int argc, char * argv[]){
         exit(1);
     }
 
-    if (connect(deliver_socket, (sockaddr*)&sin, sizeof(sin)) < 0){
+    if (connect(deliver_socket, (sockaddr *)&sin, sizeof(sin)) < 0){
         perror("connect");
         close(deliver_socket);
         exit(1);
     }
 
-    Message* message_sent;
-    Message* message_received;
+    Message* message_sent = NULL;
+    Message* message_received = NULL;
+
     do {
+        if (message_sent != NULL)  // free the memory to avoid memory leak
+            free(message_sent); 
+        if (message_received != NULL)
+            free(message_received);
+        message_sent = NULL;
+        message_received = NULL;
+
         message_sent = malloc(sizeof(Message));
         message_sent->type = LOGIN;
+        
         message_sent->size = strlen(password);
         strcpy((char *)message_sent->source, (char *)ID);
         strcpy((char *)message_sent->data, (char *)password);
-        char* login_packet = get_string_from_message(*message_sent);
+        char* message_string = get_string_from_message(*message_sent);
 
-        if (write(deliver_socket, login_packet, strlen(login_packet)) < 0){
+        if (write(deliver_socket, message_string, strlen(message_string)) < 0){
             perror("write");
             close(deliver_socket);
             exit(1);
@@ -112,47 +122,78 @@ int main(int argc, char * argv[]){
             printf("Registered Successfully.\n"); 
         else if (message_received->type == LO_NAK) // login not successful
             printf("Login was not successful, try it again.\n");
-
-        free(message_sent); // free the memory to avoid memory leak
-        free(message_received);
-        message_sent = NULL;
-        message_received = NULL;
     } while (message_received->type != LO_ACK); // resend it until we get a proper ACK
-    
-    do {
+
+    while (true){
         // available commands
         // /logout, /joinsession <session ID>, /leavesession, /createsession <session ID>, /list, /quit
-        command[0] = '\0'; // reset command and id
-        scanf("%s", command);
+        if (message_sent != NULL)  // free the memory to avoid memory leak
+            free(message_sent); 
+        if (message_received != NULL)
+            free(message_received);
+        message_sent = NULL;
+        message_received = NULL;
 
-        if (!strcmp(command, "/logout")){
-            message_sent->type = EXIT;
-            message_sent->type = LOGIN;
-            message_sent->size = strlen(password);
-            strcpy((char *)message_sent->source, (char *)ID);
-            strcpy((char *)message_sent->data, (char *)password);
+        message_sent = malloc(sizeof(Message));
+        message_sent->type = INVALID;
+
+        char new_command[MAX_LINE];
+        char optional_second_arg[MAX_LINE];
+
+        if (scanf("%s %s", new_command, optional_second_arg) > 2){
+            printf("Should have one or two arguments. Try it again..\n");
+            continue;
         }
-        else if (!strcmp(command, "/joinsession")){
+
+        if (!strcmp(new_command, "/logout")){       
+            message_sent->type = EXIT;
+            message_sent->size = strlen("l");
+            strcpy((char *)message_sent->source, (char *)ID);
+            strcpy((char *)message_sent->data, "l");
+        }
+        else if (!strcmp(new_command, "/joinsession")){ // join session
             message_sent->type = JOIN;
         }
-        else if (!strcmp(command, "/leavesession")){
+        else if (!strcmp(new_command, "/leavesession")){ // leave session
             message_sent->type = LEAVE_SESS;
         }
-        else if (!strcmp(command, "/createsession")){
+        else if (!strcmp(new_command, "/createsession")){ // create session
             message_sent->type = NEW_SESS;
         }
-        else if (!strcmp(command, "/list")){
+        else if (!strcmp(new_command, "/list")){ // list session
             message_sent->type = QUERY;
+            message_sent->size = strlen("q");
+            strcpy((char *)message_sent->source, (char *)ID);
+            strcpy((char *)message_sent->data, "q");
         }
-        else if (!strcmp(command, "/quit")){
+        else if (!strcmp(new_command, "/quit")){ // quit session
             message_sent->type = EXIT;
         }
         else {
-            perror("invalid command");
+            printf("invalid command, please try it again, %s, %s\n", new_command, optional_second_arg);
+            continue;
+        }
+
+        char* message_string = get_string_from_message(*message_sent);
+        if (write(deliver_socket, message_string, strlen(message_string)) < 0){
+            perror("write");
+            close(deliver_socket);
             exit(1);
         }
 
-        scanf("%s", ID);
-        
-    } while (message_sent->type != EXIT); // 
+        if (message_sent->type == EXIT) // only exit if user types /quit
+            break;
+
+        if (read(deliver_socket, buf, MAX_LINE) < 0){
+            perror("read");
+            close(deliver_socket);
+            exit(1);
+        }
+
+        message_received = malloc(sizeof(Message));
+        get_message_from_string(buf, message_received);
+    }
+
+    free(message_sent);
+    printf("Exiting client %s...\n", ID);
 }

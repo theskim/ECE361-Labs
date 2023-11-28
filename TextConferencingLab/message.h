@@ -47,4 +47,10 @@ typedef struct client {
     struct client *next;
 } Client;
 
+typedef struct {
+    int socket;
+    unsigned char* ip;
+    int port;
+} thread_args;
+
 #endif

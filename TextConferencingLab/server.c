@@ -109,25 +109,25 @@ void* client_receiver(void* socket_desc){
                 new_message.type = LO_NAK;
                 new_message.size = strlen("invalid size");
                 strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "invalid size");
+                strcpy((char *)new_message.data, "invalid size (potential packet loss)");
             } 
             else if (!message->source){
                 new_message.type = LO_NAK;
                 new_message.size = strlen("invalid source");
                 strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "invalid size");
+                strcpy((char *)new_message.data, "invalid src (potential packet loss)");
             } 
             else if (!message->data){
                 new_message.type = LO_NAK;
                 new_message.size = strlen("invalid password");
                 strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "invalid size");
+                strcpy((char *)new_message.data, "invalid data (potential packet loss)");
             } 
             else {
                 new_message.type = LO_ACK;
-                new_message.size = 0;
+                new_message.size = strlen("successful");
                 strcpy((char *)new_message.source, "server");
-                strcpy((char *)new_message.data, "");
+                strcpy((char *)new_message.data, "successful");
             }
 
             char* message_string = get_string_from_message(new_message);
@@ -167,12 +167,12 @@ int main(int argc, char *argv[]){
     sin.sin_addr.s_addr = INADDR_ANY; // update address (0.0.0.0)
     long port = strtol(argv[1], &str_end, 10);
 
-    if (errno == ERANGE || str_end == argv[1] || *str_end != '\0'){ // error returned or nothing received
+    if (errno == ERANGE || str_end == argv[1] || *str_end != '\0'){ // nothing received or err
         perror("invalid port");
         close(server_socket);
         exit(1);
     }
-    sin.sin_port = htons(port); // Convert values between host and network byte order
+    sin.sin_port = htons(port); // host <-> network byte order
     
     if ((bind(server_socket, (sockaddr*)&sin, sizeof(sin))) < 0) {
         perror("bind");
@@ -191,15 +191,17 @@ int main(int argc, char *argv[]){
 
     int client_socket;
     int* new_socket;
-    while ((client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len))) {
-        printf("Connection accepted\n");
+    while ((client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len))){
+        char* client_IP = inet_ntoa(client_addr.sin_addr);
+        int client_port = ntohs(client_addr.sin_port);
+        printf("Connection accepted: client addr = %s:%d\n", client_IP, client_port);
 
-        pthread_t new_thread;
+        Thread new_thread;
         new_socket = malloc(1);
         *new_socket = client_socket;
 
         // Create a new thread and join it afterwards
-        if (pthread_create(&new_thread, NULL, client_receiver, (void*)new_socket) < 0) {
+        if (pthread_create(&new_thread, NULL, client_receiver, (void*)new_socket) < 0){
             perror("pthread_create");
             exit(1);
         }

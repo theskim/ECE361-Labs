@@ -1,11 +1,14 @@
+
 #ifndef MESSAGE_H
 #define MESSAGE_H
+#include <bits/pthreadtypes.h>
 
 typedef unsigned int Type;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr sockaddr;
 typedef struct hostent hostent;
 typedef struct stat file_stat;
+typedef pthread_t Thread;
 
 // Types
 #define INVALID 0

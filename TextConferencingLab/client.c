@@ -11,13 +11,8 @@
 #include "message.h"
 #include "helper.h"
 
-long check_login_args_return_port(char* command, char* ID, char* password, hostent* hp, char* port_passed){
+long check_login_args_return_port(char* command, char* ID, char* password, char* port_passed){
     char* str_end;
-
-    if (!hp){ // checking if host is known
-        perror("unknown host");
-        exit(1);
-    }
 
     // check if user inputted wrong args
     if (strcmp(command, "/login") ||
@@ -55,19 +50,24 @@ int main(int argc, char * argv[]){
     char port_passed[MAX_LINE];
 
     // /login <client ID> <password> <server-IP> <server-port>
+    // if something is missing, then we should exit
     if (scanf("%s %s %s %s %s", command, ID, password, IP, port_passed) != 5){
         perror("should have five arguments");
-        //close(deliver_socket);
         exit(1);
     }
 
-    hp = gethostbyname(IP);
-
-    bzero(&sin, sizeof(sin));
+    hp = gethostbyname(IP); // get host by name
+    bzero(&sin, sizeof(sin)); // fills a buffer with zero bytes
     sin.sin_family = AF_INET; // IPv4
 
-    if (hp) bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
-    long port = check_login_args_return_port(command, ID, password, hp, port_passed);
+    if (hp) 
+        bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length); // copy n bytes from src to dest
+    else {
+        perror("unknown host");
+        exit(1);
+    }
+
+    long port = check_login_args_return_port(command, ID, password, port_passed);
     
     sin.sin_port = htons(port); // Convert values between host and network byte order
 
@@ -82,34 +82,77 @@ int main(int argc, char * argv[]){
         exit(1);
     }
 
-    Message message;
-    message.type = LOGIN;
-    message.size = strlen(password);
-    strcpy((char *)message.source, (char *)ID);
-    strcpy((char *)message.data, (char *)password);
-    char* login_packet = get_string_from_message(message);
+    Message* message_sent;
+    Message* message_received;
+    do {
+        message_sent = malloc(sizeof(Message));
+        message_sent->type = LOGIN;
+        message_sent->size = strlen(password);
+        strcpy((char *)message_sent->source, (char *)ID);
+        strcpy((char *)message_sent->data, (char *)password);
+        char* login_packet = get_string_from_message(*message_sent);
 
-    if (write(deliver_socket, login_packet, strlen(login_packet)) < 0){
-        perror("write");
-        close(deliver_socket);
-        exit(1);
-    }
+        if (write(deliver_socket, login_packet, strlen(login_packet)) < 0){
+            perror("write");
+            close(deliver_socket);
+            exit(1);
+        }
 
-    if (read(deliver_socket, buf, MAX_LINE) < 0){
-        perror("read");
-        close(deliver_socket);
-        exit(1);
-    }
+        if (read(deliver_socket, buf, MAX_LINE) < 0){
+            perror("read");
+            close(deliver_socket);
+            exit(1);
+        }
 
-    Message* message_received = malloc(sizeof(Message));
-    get_message_from_string(buf, message_received);
-    print_message(*message_received); // print message
+        message_received = malloc(sizeof(Message));
+        get_message_from_string(buf, message_received);
+        print_message(*message_received); // print message
 
-    if (message_received->type == LO_ACK){ // login successful
-        printf("Registered Successfully.\n"); 
-    } else if (message_received->type == LO_NAK){ // login not successful
-        printf("Login was not Successful");
-        close(deliver_socket);
-        exit(0);
-    }
+        if (message_received->type == LO_ACK) // login successful
+            printf("Registered Successfully.\n"); 
+        else if (message_received->type == LO_NAK) // login not successful
+            printf("Login was not successful, try it again.\n");
+
+        free(message_sent); // free the memory to avoid memory leak
+        free(message_received);
+        message_sent = NULL;
+        message_received = NULL;
+    } while (message_received->type != LO_ACK); // resend it until we get a proper ACK
+    
+    do {
+        // available commands
+        // /logout, /joinsession <session ID>, /leavesession, /createsession <session ID>, /list, /quit
+        command[0] = '\0'; // reset command and id
+        scanf("%s", command);
+
+        if (!strcmp(command, "/logout")){
+            message_sent->type = EXIT;
+            message_sent->type = LOGIN;
+            message_sent->size = strlen(password);
+            strcpy((char *)message_sent->source, (char *)ID);
+            strcpy((char *)message_sent->data, (char *)password);
+        }
+        else if (!strcmp(command, "/joinsession")){
+            message_sent->type = JOIN;
+        }
+        else if (!strcmp(command, "/leavesession")){
+            message_sent->type = LEAVE_SESS;
+        }
+        else if (!strcmp(command, "/createsession")){
+            message_sent->type = NEW_SESS;
+        }
+        else if (!strcmp(command, "/list")){
+            message_sent->type = QUERY;
+        }
+        else if (!strcmp(command, "/quit")){
+            message_sent->type = EXIT;
+        }
+        else {
+            perror("invalid command");
+            exit(1);
+        }
+
+        scanf("%s", ID);
+        
+    } while (message_sent->type != EXIT); // 
 }

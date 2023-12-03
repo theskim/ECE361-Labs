@@ -64,8 +64,8 @@ int main(int argc, char * argv[]){
         // /login <client ID> <password> <server-IP> <server-port>
         // if something is missing, then we should exit
         if (scanf("%s %s %s %s %s", command, ID, password, IP, port_passed) != 5){
-            perror("should have five arguments");
-            exit(1);
+            printf("[Alert] Should have 5 elements.\n");
+            continue;
         }
 
         hp = gethostbyname(IP); // get host by name
@@ -120,9 +120,9 @@ int main(int argc, char * argv[]){
         print_message(*message_received); // print message
 
         if (message_received->type == LO_ACK) // login successful
-            printf("Registered Successfully.\n"); 
+            printf("[Success] Registered Successfully.\n"); 
         else if (message_received->type == LO_NAK) // login not successful
-            printf("%s. Login was not successful, try it again.\n", message_received->data);
+            printf("[Server Message] %s.\n", message_received->data);
     } while (message_received->type != LO_ACK); // resend it until we get a proper ACK
 
     while (true){
@@ -154,10 +154,10 @@ int main(int argc, char * argv[]){
 
         int num_args = sscanf(user_input, "%s %s", new_command, optional_second_arg);
         if (num_args == 0){
-            printf("No argument entered.\n");
+            printf("[Alert] No argument entered.\n");
             continue;
         } else if (num_args > 2){
-            printf("Too many arguments.\n");
+            printf("[Alert] Too many arguments.\n");
             continue;
         } else if (strlen(new_command) == 0){ // if user enters nothing 
             continue;
@@ -175,7 +175,7 @@ int main(int argc, char * argv[]){
         }
         else if (!strcmp(new_command, "/joinsession")){ // join session
             if (num_args == 1){ // joinsession has two arguments
-                printf("Not enough arguments.\n");
+                printf("[Alert] Not enough arguments.\n");
                 continue;
             } 
             message_sent->type = JOIN;
@@ -183,7 +183,7 @@ int main(int argc, char * argv[]){
         }
         else if (!strcmp(new_command, "/leavesession")){ // leave session
             if (num_args == 2){ // leavesession has one argument
-                printf("Too many arguments.\n");
+                printf("[Alert] Too many arguments.\n");
                 continue;
             } 
             message_sent->type = LEAVE_SESS;
@@ -199,7 +199,7 @@ int main(int argc, char * argv[]){
         }
         else if (!strcmp(new_command, "/list")){ // list session
             if (num_args == 2){ // list has one argument
-                printf("Too many arguments.\n");
+                printf("[Alert] Too many arguments.\n");
                 continue;
             } 
 
@@ -211,13 +211,13 @@ int main(int argc, char * argv[]){
         }
         else if (!strcmp(new_command, "/quit")){ // quit session
             if (num_args == 2){ // quit has one argument
-                printf("Too many arguments.\n");
+                printf("[Alert] Too many arguments.\n");
                 continue;
             } 
             message_sent->type = EXIT;
         }
         else {
-            printf("\nInvalid command, Please try it again...\n");
+            printf("\n[Alert] Invalid command, Please try it again...\n");
             continue;
         }
 

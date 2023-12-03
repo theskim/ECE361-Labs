@@ -52,9 +52,9 @@ void get_message_from_string(char* string_received, Message* message){
             else if (i == 1)
                 message->size = INVALID;
             else if (i == 2)
-                strcpy((char *)message->source, splitted_val);
+                continue;
             else if (i == 3)
-                strcpy((char *)message->data, splitted_val);
+                continue;
         }
         else {
             if (i == 0)

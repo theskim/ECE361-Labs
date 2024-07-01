@@ -1,0 +1,7 @@
+*.tar.gz
+*.dSYM
+*.txt
+*.DS_Store
+*.bin
+*.swp
+*.vscode
